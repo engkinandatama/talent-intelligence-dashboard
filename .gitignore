@@ -1,6 +1,6 @@
 .streamlit/secrets.toml
 .streamlit/
-.venv/
+*.venv/
 env/
 venv/
 __pycache__/
@@ -26,3 +26,19 @@ htmlcov/
 .mypy_cache/
 .cache/
 dist/
+build/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+__pypackages__/
+*.egg
+*.tar.gz
+*.zip
+*.log
+*.pot
+*.mo
+*.cover
+*.pid
+*.seed
+*.coveragerc
+.tox/
