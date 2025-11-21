@@ -1,0 +1,21 @@
+/* Global enterprise theme */
+
+body {
+    background-color: #f7f9fc;
+}
+
+.reportview-container .main .block-container {
+    padding-top: 2rem;
+}
+
+h1, h2, h3 {
+    font-weight: 600;
+}
+
+.card {
+    padding: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
