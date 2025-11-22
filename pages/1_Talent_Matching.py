@@ -62,6 +62,10 @@ with st.container():
         # Mode B: Filter berdasarkan dimensi + rating
         with st.container():
             st.subheader("Mode B: Filter Kriteria")
+
+            # Deteksi apakah Mode A aktif
+            mode_a_active = len(manual_ids) > 0
+
             col1, col2 = st.columns(2)
 
             with col1:
@@ -71,25 +75,40 @@ with st.container():
                 pos_name = st.selectbox("Pilih Posisi", pos_options, index=0)
                 filter_position_id = pos_map.get(pos_name) if pos_name != "(Tidak dipilih)" else None
 
+            # Hanya tampilkan filter departemen jika Mode A tidak aktif
             with col2:
-                dep_map = dict(zip(departments_df['name'], departments_df['department_id']))
-                dep_options = ["(Tidak dipilih)"] + list(dep_map.keys())
-                dep_name = st.selectbox("Pilih Departemen", dep_options, index=0)
-                filter_department_id = dep_map.get(dep_name) if dep_name != "(Tidak dipilih)" else None
+                if not mode_a_active:
+                    dep_map = dict(zip(departments_df['name'], departments_df['department_id']))
+                    dep_options = ["(Tidak dipilih)"] + list(dep_map.keys())
+                    dep_name = st.selectbox("Pilih Departemen", dep_options, index=0)
+                    filter_department_id = dep_map.get(dep_name) if dep_name != "(Tidak dipilih)" else None
+                else:
+                    st.info("Departemen tidak berlaku dalam Mode A+B")
+                    filter_department_id = None  # Disable filter departemen jika Mode A aktif
 
             col3, col4 = st.columns(2)
 
+            # Hanya tampilkan filter divisi jika Mode A tidak aktif
             with col3:
-                div_map = dict(zip(divisions_df['name'], divisions_df['division_id']))
-                div_options = ["(Tidak dipilih)"] + list(div_map.keys())
-                div_name = st.selectbox("Pilih Divisi", div_options, index=0)
-                filter_division_id = div_map.get(div_name) if div_name != "(Tidak dipilih)" else None
+                if not mode_a_active:
+                    div_map = dict(zip(divisions_df['name'], divisions_df['division_id']))
+                    div_options = ["(Tidak dipilih)"] + list(div_map.keys())
+                    div_name = st.selectbox("Pilih Divisi", div_options, index=0)
+                    filter_division_id = div_map.get(div_name) if div_name != "(Tidak dipilih)" else None
+                else:
+                    st.info("Divisi tidak berlaku dalam Mode A+B")
+                    filter_division_id = None  # Disable filter divisi jika Mode A aktif
 
+            # Hanya tampilkan filter grade jika Mode A tidak aktif
             with col4:
-                grade_map = dict(zip(grades_df['name'], grades_df['grade_id']))
-                grade_options = ["(Tidak dipilih)"] + list(grade_map.keys())
-                grade_name = st.selectbox("Pilih Grade", grade_options, index=0)
-                filter_grade_id = grade_map.get(grade_name) if grade_name != "(Tidak dipilih)" else None
+                if not mode_a_active:
+                    grade_map = dict(zip(grades_df['name'], grades_df['grade_id']))
+                    grade_options = ["(Tidak dipilih)"] + list(grade_map.keys())
+                    grade_name = st.selectbox("Pilih Grade", grade_options, index=0)
+                    filter_grade_id = grade_map.get(grade_name) if grade_name != "(Tidak dipilih)" else None
+                else:
+                    st.info("Grade tidak berlaku dalam Mode A+B")
+                    filter_grade_id = None  # Disable filter grade jika Mode A aktif
 
             # Tambahkan slider range rating untuk filter kandidat
             rating_range = st.slider(
@@ -100,10 +119,14 @@ with st.container():
             )
 
             # Rating untuk benchmark selalu 5
-            mode_a_active = len(manual_ids) > 0
             # Mode B aktif jika setidaknya satu filter dipilih (tidak "(Tidak dipilih)")
-            mode_b_active = (filter_position_id is not None or filter_department_id is not None or
-                             filter_division_id is not None or filter_grade_id is not None)
+            if mode_a_active:
+                # Jika Mode A aktif, hanya filter posisi yang berlaku
+                mode_b_active = (filter_position_id is not None)
+            else:
+                # Jika Mode A tidak aktif, semua filter berlaku
+                mode_b_active = (filter_position_id is not None or filter_department_id is not None or
+                                 filter_division_id is not None or filter_grade_id is not None)
 
             # Jika semua filter tidak dipilih (default), kita tetap ingin Mode B aktif untuk menampilkan semua karyawan yang sesuai rating
             if not mode_b_active and not mode_a_active:
