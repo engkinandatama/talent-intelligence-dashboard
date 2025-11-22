@@ -3,82 +3,80 @@ import pandas as pd
 from core.db import get_engine
 from core.matching import run_match_query
 
-engine = get_engine()
+st.set_page_config(page_title="Talent Matching", page_icon="🎯", layout="wide")
 
 st.title("🎯 Talent Matching Engine")
-st.caption("Find the best internal talent match based on benchmarked skill profiles.")
+st.caption("Temukan talenta internal terbaik berdasarkan profil benchmark.")
 
-st.markdown("---")
+engine = get_engine()
 
-# ------------------------------------------------
-# Sidebar Filters
-# ------------------------------------------------
-st.sidebar.header("⚙️ Benchmark Settings")
+# Fungsi untuk memuat data dropdown dari database
+@st.cache_data(ttl=3600) # Cache data selama 1 jam
+def load_dropdown_data():
+    with engine.connect() as conn:
+        # Mengambil nama posisi dari tabel dim_positions
+        positions = pd.read_sql("SELECT position_id, name FROM dim_positions ORDER BY name", conn)
+        # Mengambil nama karyawan dari tabel employees
+        employees = pd.read_sql("SELECT employee_id, fullname FROM employees ORDER BY fullname", conn)
+    return positions, employees
+
+try:
+    positions_df, employees_df = load_dropdown_data()
+except Exception as e:
+    st.error(f"Gagal memuat data untuk filter dari database: {e}")
+    st.stop()
+
+# --- UI Kontrol di Sidebar ---
+st.sidebar.header("⚙️ Pengaturan Benchmark")
 
 min_rating = st.sidebar.slider(
-    "Minimum rating considered 'High Performer'",
-    1, 5, 5
+    "Rating Minimum 'High Performer'",
+    min_value=1, max_value=5, value=5,
+    help="Hanya karyawan dengan rating ini atau lebih tinggi yang akan dipertimbangkan dalam benchmark otomatis."
 )
 
-# Load positions for role-based benchmark
-positions = pd.read_sql("SELECT position_id, name FROM dim_positions ORDER BY name", engine)
-position_map = dict(zip(positions["name"], positions["position_id"]))
-
-selected_position = st.sidebar.selectbox(
-    "Role-Based Benchmark Position (optional)",
-    ["(None)"] + list(position_map.keys())
+# --- Mode A: Benchmark Manual ---
+st.sidebar.subheader("Mode A: Benchmark Manual")
+manual_selection = st.sidebar.multiselect(
+    "Pilih Karyawan Benchmark",
+    options=[f"{row.employee_id} — {row.fullname}" for _, row in employees_df.iterrows()],
+    help="Pilih 1-5 karyawan untuk dijadikan tolak ukur manual."
 )
+manual_ids = [item.split(" — ")[0] for item in manual_selection]
 
-role_id = None if selected_position == "(None)" else position_map[selected_position]
-
-# Load HP list for manual benchmark
-hp_df = pd.read_sql("""
-    SELECT e.employee_id, e.fullname
-    FROM employees e
-    JOIN performance_yearly p USING(employee_id)
-    WHERE p.rating >= 5
-    ORDER BY fullname
-""", engine)
-
-hp_df["label"] = hp_df["employee_id"] + " — " + hp_df["fullname"]
-
-manual_selected = st.sidebar.multiselect(
-    "Manual High Performers (optional)",
-    hp_df["label"],
+# --- Mode B: Benchmark Berdasarkan Posisi ---
+st.sidebar.subheader("Mode B: Benchmark Berdasarkan Posisi")
+position_name_map = dict(zip(positions_df['name'], positions_df['position_id']))
+selected_position_name = st.sidebar.selectbox(
+    "Pilih Posisi Target",
+    options=["(Tidak ada)"] + list(position_name_map.keys()),
+    help="Sistem akan otomatis menggunakan semua high-performer dari posisi ini sebagai benchmark."
 )
+target_position_id = None
+if selected_position_name != "(Tidak ada)":
+    target_position_id = position_name_map[selected_position_name]
 
-manual_ids = [x.split(" — ")[0] for x in manual_selected]
+st.sidebar.info("Anda bisa menggunakan Mode A, Mode B, atau keduanya secara bersamaan.")
 
-st.sidebar.markdown("💡 You may select manual, role-based, or both.")
+# --- Tombol Eksekusi ---
+if st.sidebar.button("🚀 Jalankan Talent Match", use_container_width=True):
+    if not manual_ids and not target_position_id:
+        st.warning("Silakan pilih setidaknya satu karyawan benchmark manual atau satu posisi target.")
+    else:
+        with st.spinner("Menjalankan algoritma Talent Matching... Ini mungkin memakan waktu beberapa saat."):
+            try:
+                result_df = run_match_query(
+                    engine,
+                    manual_ids=manual_ids,
+                    target_position_id=target_position_id,
+                    min_rating=min_rating
+                )
 
-run_button = st.sidebar.button("🚀 Run Talent Match")
+                st.success("Perhitungan Talent Matching selesai!")
+                st.subheader("📊 Peringkat Talenta")
+                st.dataframe(result_df, use_container_width=True)
 
-# ------------------------------------------------
-# Run Engine
-# ------------------------------------------------
-if run_button:
-    st.subheader("📊 Ranked Talent List")
-
-    with st.spinner("Running Talent Matching Engine..."):
-        df = run_match_query(manual_ids, role_id, min_rating)
-
-    df_view = df.copy()
-    df_view["final_match_rate"] = df_view["final_match_rate"].round(2)
-
-    st.dataframe(df_view, use_container_width=True)
-
-    # Show Top Candidate
-    if len(df_view):
-        top = df_view.iloc[0]
-
-        st.markdown("---")
-        st.subheader("🏅 Top Match")
-
-        st.success(f"""
-        **{top['fullname']}**  
-        ID: `{top['employee_id']}`  
-        **Match Score:** {top['final_match_rate']:.2f}
-        """)
-
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat menjalankan query: {e}")
 else:
-    st.info("Set filters on the left, then click **Run Talent Match**.")
+    st.info("Atur parameter benchmark di sidebar kiri, lalu klik **Jalankan Talent Match**.")
