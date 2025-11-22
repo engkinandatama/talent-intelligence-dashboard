@@ -91,7 +91,15 @@ with st.container():
                 grade_name = st.selectbox("Pilih Grade", grade_options, index=0)
                 filter_grade_id = grade_map.get(grade_name) if grade_name != "(Tidak dipilih)" else None
 
-            # Rating hanya aktif jika bukan Mode A+B
+            # Tambahkan slider range rating untuk filter kandidat
+            rating_range = st.slider(
+                "Filter Berdasarkan Rentang Rating Kinerja",
+                min_value=1,
+                max_value=5,
+                value=(1, 5)  # Defaultnya menampilkan semua rating
+            )
+
+            # Rating untuk benchmark selalu 5
             mode_a_active = len(manual_ids) > 0
             # Mode B aktif jika setidaknya satu filter dipilih (tidak "(Tidak dipilih)")
             mode_b_active = (filter_position_id is not None or filter_department_id is not None or
@@ -103,12 +111,7 @@ with st.container():
                 # Ini untuk memungkinkan tampilan semua karyawan yang sesuai rating
                 mode_b_active = True
 
-            if mode_a_active and mode_b_active:
-                # Jika Mode A+B diaktifkan, rating otomatis non-aktif
-                min_rating = 1  # Default nilai, karena rating tidak digunakan
-                st.info("ℹ️ Rating performance dinonaktifkan karena Mode A dan B digunakan bersamaan (tidak akan terjadi konflik).")
-            else:
-                min_rating = st.slider("Rating Minimum 'High Performer'", 1, 5, 5)
+            min_rating = 5  # Selalu gunakan 5 untuk benchmark
 
         # Penjelasan untuk skenario
         st.divider()
@@ -122,6 +125,15 @@ with st.container():
             st.info("🔍⚙️ **Mode A & B**: Menampilkan tingkat kecocokan antara karyawan dari Mode A terhadap kriteria filter dari Mode B.")
         else:
             st.info("📋 **Default**: Jika tidak ada filter yang dipilih, sistem akan menampilkan semua karyawan dengan rating tinggi sebagai benchmark default.")
+
+# Tambahkan input jumlah hasil
+with st.container():
+    result_limit = st.number_input("Jumlah Hasil yang Ditampilkan",
+                                   min_value=50,
+                                   max_value=1000,
+                                   value=200,
+                                   step=50,
+                                   help="Jumlah maksimum hasil yang akan ditampilkan")
 
 # --- Tombol Eksekusi ---
 run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
@@ -164,8 +176,9 @@ if run_button:
                             engine,
                             manual_ids=manual_ids,  # Karyawan yang ingin kita evaluasi kecocokannya
                             target_position_id=pos_row['position_id'],  # Benchmark dari posisi ini
-                            min_rating=min_rating,
-                            filters={}  # Tidak ada filter tambahan
+                            filters={},  # Tidak ada filter tambahan
+                            rating_range=rating_range,  # Gunakan rentang rating dari slider
+                            limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
                         )
 
                         # Tambahkan informasi posisi ke hasil sebelum dimasukkan ke list
@@ -190,8 +203,40 @@ if run_button:
                 st.success(f"Perhitungan selesai! Ditemukan kecocokan untuk {len(final_result_df)} posisi.")
                 st.subheader("📊 Rekomendasi Posisi untuk Karyawan Terpilih")
 
-                # Tampilkan hasil dengan kolom benchmark_position
-                st.dataframe(final_result_df, use_container_width=True)
+                # Implementasi pagination
+                if len(final_result_df) > result_limit:
+                    # Inisialisasi session state untuk pagination
+                    if 'current_page_a' not in st.session_state:
+                        st.session_state.current_page_a = 0
+
+                    items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
+                    total_pages = (len(final_result_df) + items_per_page - 1) // items_per_page
+
+                    # Filter data untuk halaman saat ini
+                    start_idx = st.session_state.current_page_a * items_per_page
+                    end_idx = min(start_idx + items_per_page, len(final_result_df))
+                    current_page_data = final_result_df.iloc[start_idx:end_idx]
+
+                    st.write(f"Halaman {st.session_state.current_page_a + 1} dari {total_pages}")
+
+                    # Tampilkan hasil untuk halaman saat ini
+                    st.dataframe(current_page_data, use_container_width=True)
+
+                    # Tombol navigasi
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col1:
+                        if st.button("◀ Sebelumnya", key="prev_a", disabled=(st.session_state.current_page_a == 0)):
+                            st.session_state.current_page_a -= 1
+                            st.rerun()
+                    with col3:
+                        if st.button("Berikutnya ▶", key="next_a", disabled=(st.session_state.current_page_a >= total_pages - 1)):
+                            st.session_state.current_page_a += 1
+                            st.rerun()
+                    with col2:
+                        pass
+                else:
+                    # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
+                    st.dataframe(final_result_df, use_container_width=True)
 
                 # Tambahkan informasi tambahan
                 st.info("Angka `final_match_rate` menunjukkan seberapa cocok karyawan terhadap posisi tersebut. Semakin tinggi nilainya, semakin cocok.")
@@ -205,12 +250,47 @@ if run_button:
                         engine,
                         manual_ids=None,
                         target_position_id=None,
-                        min_rating=min_rating,
-                        filters={}
+                        filters={},
+                        rating_range=rating_range,  # Gunakan rentang rating dari slider
+                        limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
                     )
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} karyawan.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
-                    st.dataframe(result_df, use_container_width=True)
+
+                    # Implementasi pagination
+                    if len(result_df) > result_limit:
+                        # Inisialisasi session state untuk pagination
+                        if 'current_page_b' not in st.session_state:
+                            st.session_state.current_page_b = 0
+
+                        items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
+                        total_pages = (len(result_df) + items_per_page - 1) // items_per_page
+
+                        # Filter data untuk halaman saat ini
+                        start_idx = st.session_state.current_page_b * items_per_page
+                        end_idx = min(start_idx + items_per_page, len(result_df))
+                        current_page_data = result_df.iloc[start_idx:end_idx]
+
+                        st.write(f"Halaman {st.session_state.current_page_b + 1} dari {total_pages}")
+
+                        # Tampilkan hasil untuk halaman saat ini
+                        st.dataframe(current_page_data, use_container_width=True)
+
+                        # Tombol navigasi
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("◀ Sebelumnya", key="prev_b", disabled=(st.session_state.current_page_b == 0)):
+                                st.session_state.current_page_b -= 1
+                                st.rerun()
+                        with col3:
+                            if st.button("Berikutnya ▶", key="next_b", disabled=(st.session_state.current_page_b >= total_pages - 1)):
+                                st.session_state.current_page_b += 1
+                                st.rerun()
+                        with col2:
+                            pass
+                    else:
+                        # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
+                        st.dataframe(result_df, use_container_width=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
@@ -222,8 +302,9 @@ if run_button:
                         engine,
                         manual_ids=manual_ids if manual_ids else None,
                         target_position_id=None,
-                        min_rating=min_rating,
-                        filters=filters
+                        filters=filters,
+                        rating_range=rating_range,  # Gunakan rentang rating dari slider
+                        limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
                     )
 
                     # Jika mode A+B (Mode A+B aktif), hanya tampilkan karyawan dari Mode A
@@ -232,7 +313,41 @@ if run_button:
 
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} kandidat yang cocok.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
-                    st.dataframe(result_df, use_container_width=True)
+
+                    # Implementasi pagination
+                    if len(result_df) > result_limit:
+                        # Inisialisasi session state untuk pagination
+                        if 'current_page_other' not in st.session_state:
+                            st.session_state.current_page_other = 0
+
+                        items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
+                        total_pages = (len(result_df) + items_per_page - 1) // items_per_page
+
+                        # Filter data untuk halaman saat ini
+                        start_idx = st.session_state.current_page_other * items_per_page
+                        end_idx = min(start_idx + items_per_page, len(result_df))
+                        current_page_data = result_df.iloc[start_idx:end_idx]
+
+                        st.write(f"Halaman {st.session_state.current_page_other + 1} dari {total_pages}")
+
+                        # Tampilkan hasil untuk halaman saat ini
+                        st.dataframe(current_page_data, use_container_width=True)
+
+                        # Tombol navigasi
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("◀ Sebelumnya", key="prev_other", disabled=(st.session_state.current_page_other == 0)):
+                                st.session_state.current_page_other -= 1
+                                st.rerun()
+                        with col3:
+                            if st.button("Berikutnya ▶", key="next_other", disabled=(st.session_state.current_page_other >= total_pages - 1)):
+                                st.session_state.current_page_other += 1
+                                st.rerun()
+                        with col2:
+                            pass
+                    else:
+                        # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
+                        st.dataframe(result_df, use_container_width=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
