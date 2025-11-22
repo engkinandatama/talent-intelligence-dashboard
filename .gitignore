@@ -1,5 +1,6 @@
 .streamlit/secrets.toml
 .streamlit/
+docs/*
 *.venv/
 env/
 venv/
