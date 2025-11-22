@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 from core.db import get_engine
-from core.matching import run_match_query
+from core.matching import run_standard_match_query, get_match_for_single_person
 
 st.set_page_config(page_title="Talent Matching", page_icon="🎯", layout="wide")
 
@@ -165,40 +165,19 @@ if run_button:
         # Kita akan menghitung kecocokan karyawan yang dipilih terhadap benchmark dari setiap posisi
         if mode_a_active and not has_active_filters:
             st.success(f"Memproses kecocokan untuk {len(manual_ids)} karyawan terpilih...")
-            all_results = []
 
-            with st.spinner("Menghitung kecocokan terhadap berbagai posisi..."):
-                # Untuk setiap posisi, hitung kecocokan karyawan terpilih terhadap benchmark posisi tersebut
-                for _, pos_row in positions_df.iterrows():
-                    try:
-                        # Jalankan query untuk mencari kecocokan terhadap benchmark dari posisi ini
-                        temp_result = run_match_query(
-                            engine,
-                            manual_ids=manual_ids,  # Karyawan yang ingin kita evaluasi kecocokannya
-                            target_position_id=pos_row['position_id'],  # Benchmark dari posisi ini
-                            filters={},  # Tidak ada filter tambahan
-                            rating_range=rating_range,  # Gunakan rentang rating dari slider
-                            limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
-                        )
-
-                        # Tambahkan informasi posisi ke hasil sebelum dimasukkan ke list
-                        if not temp_result.empty:
-                            temp_result = temp_result.copy()
-                            temp_result['benchmark_position'] = pos_row['name']  # Tambahkan nama posisi sebagai kolom baru
-                            all_results.append(temp_result)
-                    except Exception:
-                        # Lewati jika terjadi error untuk posisi tertentu
-                        continue
+            all_final_results = []
+            # Proses setiap karyawan secara individual
+            for emp_id in manual_ids:
+                with st.spinner(f"Menghitung rekomendasi posisi untuk {emp_id}..."):
+                    # Gunakan fungsi get_match_for_single_person untuk karyawan ini
+                    temp_result = get_match_for_single_person(engine, emp_id)
+                    if not temp_result.empty:
+                        all_final_results.append(temp_result)
 
             # Gabungkan semua hasil
-            if all_results:
-                final_result_df = pd.concat(all_results, ignore_index=True)
-
-                # Hanya tampilkan hasil untuk karyawan yang dicari di Mode A
-                final_result_df = final_result_df[final_result_df['employee_id'].isin(manual_ids)]
-
-                # Urutkan berdasarkan employee_id dan final_match_rate (dari tinggi ke rendah)
-                final_result_df = final_result_df.sort_values(['employee_id', 'final_match_rate'], ascending=[True, False])
+            if all_final_results:
+                final_result_df = pd.concat(all_final_results, ignore_index=True)
 
                 st.success(f"Perhitungan selesai! Ditemukan kecocokan untuk {len(final_result_df)} posisi.")
                 st.subheader("📊 Rekomendasi Posisi untuk Karyawan Terpilih")
@@ -246,13 +225,15 @@ if run_button:
             # Mode B saja tanpa filter aktif - tampilkan semua karyawan sesuai rating
             with st.spinner("Menjalankan algoritma Talent Matching..."):
                 try:
-                    result_df = run_match_query(
+                    result_df = run_standard_match_query(
                         engine,
-                        manual_ids=None,
-                        target_position_id=None,
+                        manual_ids_for_benchmark=None,
+                        target_position_id_for_benchmark=None,
                         filters={},
+                        search_name=None,
                         rating_range=rating_range,  # Gunakan rentang rating dari slider
-                        limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
+                        limit=result_limit,  # Gunakan jumlah hasil yang ditentukan pengguna
+                        manual_ids_to_filter=None
                     )
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} karyawan.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
@@ -298,13 +279,15 @@ if run_button:
             # Mode B saja atau Mode A+B
             with st.spinner("Menjalankan algoritma Talent Matching..."):
                 try:
-                    result_df = run_match_query(
+                    result_df = run_standard_match_query(
                         engine,
-                        manual_ids=manual_ids if manual_ids else None,
-                        target_position_id=None,
+                        manual_ids_for_benchmark=manual_ids if manual_ids else None,
+                        target_position_id_for_benchmark=None,
                         filters=filters,
+                        search_name=None,
                         rating_range=rating_range,  # Gunakan rentang rating dari slider
-                        limit=result_limit  # Gunakan jumlah hasil yang ditentukan pengguna
+                        limit=result_limit,  # Gunakan jumlah hasil yang ditentukan pengguna
+                        manual_ids_to_filter=None
                     )
 
                     # Jika mode A+B (Mode A+B aktif), hanya tampilkan karyawan dari Mode A
