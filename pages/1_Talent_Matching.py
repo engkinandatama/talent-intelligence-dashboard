@@ -144,14 +144,19 @@ with st.container():
         else:
             st.info("📋 **Default**: Jika tidak ada filter yang dipilih, sistem akan menampilkan semua karyawan dengan rating tinggi sebagai benchmark default.")
 
-# Tambahkan input jumlah hasil
-with st.container():
-    result_limit = st.number_input("Jumlah Hasil yang Ditampilkan",
-                                   min_value=50,
-                                   max_value=1000,
-                                   value=200,
-                                   step=50,
-                                   help="Jumlah maksimum hasil yang akan ditampilkan")
+# --- Initialize Session State ---
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = None
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+if 'current_page_a' not in st.session_state:
+    st.session_state.current_page_a = 1
+if 'current_page_b' not in st.session_state:
+    st.session_state.current_page_b = 1
+if 'current_page_ab' not in st.session_state:
+    st.session_state.current_page_ab = 1
+if 'last_mode_used' not in st.session_state:
+    st.session_state.last_mode_used = 'B'  # Default mode adalah B
 
 # --- Tombol Eksekusi ---
 run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
@@ -197,43 +202,47 @@ if run_button:
             if all_final_results:
                 final_result_df = pd.concat(all_final_results, ignore_index=True)
 
+                # Simpan hasil ke session state dan reset halaman ke 1
+                st.session_state.search_results = final_result_df
+                st.session_state.current_page_a = 1  # Reset halaman ke 1 untuk Mode A
+                st.session_state.last_mode_used = 'A'  # Tandai bahwa ini adalah Mode A
+
                 st.success(f"Perhitungan selesai! Ditemukan kecocokan untuk {len(final_result_df)} posisi.")
                 st.subheader("📊 Rekomendasi Posisi untuk Karyawan Terpilih")
 
-                # Implementasi pagination
-                if len(final_result_df) > result_limit:
-                    # Inisialisasi session state untuk pagination
-                    if 'current_page_a' not in st.session_state:
-                        st.session_state.current_page_a = 0
+                # Implementasi pagination sesuai instruksi
+                if final_result_df.empty:
+                    st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                else:
+                    # --- Implementasi Pagination ---
+                    items_per_page = 20
+                    total_items = len(final_result_df)
+                    total_pages = (total_items + items_per_page - 1) // items_per_page
 
-                    items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
-                    total_pages = (len(final_result_df) + items_per_page - 1) // items_per_page
+                    # Pastikan halaman saat ini tidak melebihi total halaman (jika filter berubah)
+                    if st.session_state.current_page_a > total_pages:
+                        st.session_state.current_page_a = 1
 
-                    # Filter data untuk halaman saat ini
-                    start_idx = st.session_state.current_page_a * items_per_page
-                    end_idx = min(start_idx + items_per_page, len(final_result_df))
-                    current_page_data = final_result_df.iloc[start_idx:end_idx]
-
-                    st.write(f"Halaman {st.session_state.current_page_a + 1} dari {total_pages}")
-
-                    # Tampilkan hasil untuk halaman saat ini
-                    st.dataframe(current_page_data, use_container_width=True)
-
-                    # Tombol navigasi
+                    # Tampilan navigasi dan informasi halaman
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col1:
-                        if st.button("◀ Sebelumnya", key="prev_a", disabled=(st.session_state.current_page_a == 0)):
+                        if st.button("◀ Sebelumnya", disabled=(st.session_state.current_page_a <= 1)):
                             st.session_state.current_page_a -= 1
                             st.rerun()
                     with col3:
-                        if st.button("Berikutnya ▶", key="next_a", disabled=(st.session_state.current_page_a >= total_pages - 1)):
+                        if st.button("Berikutnya ▶", disabled=(st.session_state.current_page_a >= total_pages)):
                             st.session_state.current_page_a += 1
                             st.rerun()
                     with col2:
-                        pass
-                else:
-                    # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
-                    st.dataframe(final_result_df, use_container_width=True)
+                        st.write(f"Halaman **{st.session_state.current_page_a}** dari **{total_pages}**")
+
+                    # "Potong" DataFrame untuk menampilkan data halaman saat ini
+                    start_idx = (st.session_state.current_page_a - 1) * items_per_page
+                    end_idx = min(start_idx + items_per_page, len(final_result_df))
+                    paginated_df = final_result_df.iloc[start_idx:end_idx]
+
+                    # Tampilkan tabel yang sudah dipaginasi
+                    st.dataframe(paginated_df, use_container_width=True)
 
                 # Tambahkan informasi tambahan
                 st.info("Angka `final_match_rate` menunjukkan seberapa cocok karyawan terhadap posisi tersebut. Semakin tinggi nilainya, semakin cocok.")
@@ -250,46 +259,51 @@ if run_button:
                         filters={},
                         search_name=None,
                         rating_range=rating_range,  # Gunakan rentang rating dari slider
-                        limit=result_limit,  # Gunakan jumlah hasil yang ditentukan pengguna
+                        limit=10000,  # Gunakan jumlah hasil yang sangat tinggi untuk mengambil semua data
                         manual_ids_to_filter=None
                     )
+
+                    # Simpan hasil ke session state dan reset halaman ke 1
+                    st.session_state.search_results = result_df
+                    st.session_state.current_page_b = 1  # Reset halaman ke 1 untuk Mode B
+                    st.session_state.last_mode_used = 'B'  # Tandai bahwa ini adalah Mode B
+
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} karyawan.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
 
-                    # Implementasi pagination
-                    if len(result_df) > result_limit:
-                        # Inisialisasi session state untuk pagination
-                        if 'current_page_b' not in st.session_state:
-                            st.session_state.current_page_b = 0
+                    # Implementasi pagination sesuai instruksi
+                    if result_df.empty:
+                        st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                    else:
+                        # --- Implementasi Pagination ---
+                        items_per_page = 20
+                        total_items = len(result_df)
+                        total_pages = (total_items + items_per_page - 1) // items_per_page
 
-                        items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
-                        total_pages = (len(result_df) + items_per_page - 1) // items_per_page
+                        # Pastikan halaman saat ini tidak melebihi total halaman (jika filter berubah)
+                        if st.session_state.current_page_b > total_pages:
+                            st.session_state.current_page_b = 1
 
-                        # Filter data untuk halaman saat ini
-                        start_idx = st.session_state.current_page_b * items_per_page
-                        end_idx = min(start_idx + items_per_page, len(result_df))
-                        current_page_data = result_df.iloc[start_idx:end_idx]
-
-                        st.write(f"Halaman {st.session_state.current_page_b + 1} dari {total_pages}")
-
-                        # Tampilkan hasil untuk halaman saat ini
-                        st.dataframe(current_page_data, use_container_width=True)
-
-                        # Tombol navigasi
+                        # Tampilan navigasi dan informasi halaman
                         col1, col2, col3 = st.columns([1, 2, 1])
                         with col1:
-                            if st.button("◀ Sebelumnya", key="prev_b", disabled=(st.session_state.current_page_b == 0)):
+                            if st.button("◀ Sebelumnya", disabled=(st.session_state.current_page_b <= 1)):
                                 st.session_state.current_page_b -= 1
                                 st.rerun()
                         with col3:
-                            if st.button("Berikutnya ▶", key="next_b", disabled=(st.session_state.current_page_b >= total_pages - 1)):
+                            if st.button("Berikutnya ▶", disabled=(st.session_state.current_page_b >= total_pages)):
                                 st.session_state.current_page_b += 1
                                 st.rerun()
                         with col2:
-                            pass
-                    else:
-                        # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
-                        st.dataframe(result_df, use_container_width=True)
+                            st.write(f"Halaman **{st.session_state.current_page_b}** dari **{total_pages}**")
+
+                        # "Potong" DataFrame untuk menampilkan data halaman saat ini
+                        start_idx = (st.session_state.current_page_b - 1) * items_per_page
+                        end_idx = min(start_idx + items_per_page, len(result_df))
+                        paginated_df = result_df.iloc[start_idx:end_idx]
+
+                        # Tampilkan tabel yang sudah dipaginasi
+                        st.dataframe(paginated_df, use_container_width=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
@@ -309,9 +323,14 @@ if run_button:
                             filters=filters,  # Terapkan filter lainnya
                             search_name=None,
                             rating_range=rating_range,
-                            limit=result_limit,
+                            limit=10000,  # Gunakan jumlah hasil yang sangat tinggi untuk mengambil semua data
                             manual_ids_to_filter=manual_ids  # Filter hasil hanya untuk karyawan dari Mode A
                         )
+
+                        # Simpan hasil ke session state dan reset halaman ke 1
+                        st.session_state.search_results = result_df
+                        st.session_state.current_page_ab = 1  # Reset halaman ke 1 untuk Mode A+B
+                        st.session_state.last_mode_used = 'AB'  # Tandai bahwa ini adalah Mode A+B
                     else:
                         # Mode B saja atau Mode A tanpa filter
                         result_df = run_standard_match_query(
@@ -321,49 +340,115 @@ if run_button:
                             filters=filters,
                             search_name=None,
                             rating_range=rating_range,
-                            limit=result_limit,
+                            limit=10000,  # Gunakan jumlah hasil yang sangat tinggi untuk mengambil semua data
                             manual_ids_to_filter=None
                         )
+
+                        # Simpan hasil ke session state dan reset halaman ke 1
+                        if st.session_state.search_results is None:
+                            st.session_state.search_results = result_df
+                        st.session_state.current_page_b = 1  # Reset halaman ke 1 untuk Mode B
+                        st.session_state.last_mode_used = 'B'  # Tandai bahwa ini adalah Mode B
 
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} kandidat yang cocok.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
 
-                    # Implementasi pagination
-                    if len(result_df) > result_limit:
-                        # Inisialisasi session state untuk pagination
-                        if 'current_page_other' not in st.session_state:
-                            st.session_state.current_page_other = 0
+                    # Implementasi pagination dengan session_state yang terpisah untuk setiap mode
+                    if result_df.empty:
+                        st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                    else:
+                        # Simpan hasil ke session state jika belum disimpan sebelumnya di mode ini
+                        if mode_a_active and (filter_position_id or any(filters.values())):
+                            # Mode A+B
+                            st.session_state.search_results = result_df
+                            mode_key = 'current_page_ab'
+                        else:
+                            # Mode B saja
+                            if not hasattr(st.session_state, 'search_results') or st.session_state.search_results is None:
+                                st.session_state.search_results = result_df
+                            mode_key = 'current_page_b'
 
-                        items_per_page = min(50, result_limit)  # Batasi jumlah item per halaman
-                        total_pages = (len(result_df) + items_per_page - 1) // items_per_page
+                        # Ambil data dari session state untuk pagination
+                        current_result_df = st.session_state.search_results
+                        items_per_page = 20
+                        total_items = len(current_result_df)
+                        total_pages = (total_items + items_per_page - 1) // items_per_page
 
-                        # Filter data untuk halaman saat ini
-                        start_idx = st.session_state.current_page_other * items_per_page
-                        end_idx = min(start_idx + items_per_page, len(result_df))
-                        current_page_data = result_df.iloc[start_idx:end_idx]
+                        # Pastikan halaman saat ini tidak melebihi total halaman (jika filter berubah)
+                        if st.session_state[mode_key] > total_pages:
+                            st.session_state[mode_key] = 1
 
-                        st.write(f"Halaman {st.session_state.current_page_other + 1} dari {total_pages}")
-
-                        # Tampilkan hasil untuk halaman saat ini
-                        st.dataframe(current_page_data, use_container_width=True)
-
-                        # Tombol navigasi
+                        # Tampilan navigasi dan informasi halaman
                         col1, col2, col3 = st.columns([1, 2, 1])
                         with col1:
-                            if st.button("◀ Sebelumnya", key="prev_other", disabled=(st.session_state.current_page_other == 0)):
-                                st.session_state.current_page_other -= 1
+                            if st.button("◀ Sebelumnya", key=f"prev_{mode_key}", disabled=(st.session_state[mode_key] <= 1)):
+                                st.session_state[mode_key] -= 1
                                 st.rerun()
                         with col3:
-                            if st.button("Berikutnya ▶", key="next_other", disabled=(st.session_state.current_page_other >= total_pages - 1)):
-                                st.session_state.current_page_other += 1
+                            if st.button("Berikutnya ▶", key=f"next_{mode_key}", disabled=(st.session_state[mode_key] >= total_pages)):
+                                st.session_state[mode_key] += 1
                                 st.rerun()
                         with col2:
-                            pass
-                    else:
-                        # Tampilkan semua hasil jika jumlahnya kurang dari atau sama dengan result_limit
-                        st.dataframe(result_df, use_container_width=True)
+                            st.write(f"Halaman **{st.session_state[mode_key]}** dari **{total_pages}**")
+
+                        # "Potong" DataFrame untuk menampilkan data halaman saat ini
+                        start_idx = (st.session_state[mode_key] - 1) * items_per_page
+                        end_idx = min(start_idx + items_per_page, len(current_result_df))
+                        paginated_df = current_result_df.iloc[start_idx:end_idx]
+
+                        # Tampilkan tabel yang sudah dipaginasi
+                        st.dataframe(paginated_df, use_container_width=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
 else:
     st.info("Atur Mode A atau Mode B di atas, lalu klik 'Jalankan Talent Match'.")
+
+# Tampilkan hasil dari session state jika sudah ada (untuk menjaga hasil saat berpindah halaman)
+# Ini akan aktif saat run_button tidak diklik tapi hasil sebelumnya masih ada di session_state
+if not run_button and 'search_results' in st.session_state and st.session_state.search_results is not None and not st.session_state.search_results.empty:
+    st.subheader("📊 Peringkat Kecocokan Talenta (Hasil Tersimpan)")
+
+    # Gunakan hasil dari session state
+    current_result_df = st.session_state.search_results
+
+    # Kita perlu menyimpan informasi mode yang digunakan sebelumnya untuk mengakses session state yang benar
+    # Simpan informasi ini di session state saat hasil dihitung
+    if 'last_mode_used' in st.session_state:
+        last_mode = st.session_state.last_mode_used
+    else:
+        # Default ke mode B jika tidak ada informasi
+        last_mode = 'B'
+
+    # Tetapkan mode_key berdasarkan mode terakhir yang digunakan
+    if last_mode == 'A':
+        mode_key = 'current_page_a'
+    elif last_mode == 'AB':
+        mode_key = 'current_page_ab'
+    else:  # Default ke B
+        mode_key = 'current_page_b'
+
+    items_per_page = 20
+    total_items = len(current_result_df)
+    total_pages = (total_items + items_per_page - 1) // items_per_page
+
+    # Tampilan navigasi dan informasi halaman
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        if st.button("◀ Sebelumnya", key=f"nav_prev_{mode_key}", disabled=(st.session_state[mode_key] <= 1)):
+            st.session_state[mode_key] -= 1
+            st.rerun()
+    with col3:
+        if st.button("Berikutnya ▶", key=f"nav_next_{mode_key}", disabled=(st.session_state[mode_key] >= total_pages)):
+            st.session_state[mode_key] += 1
+            st.rerun()
+    with col2:
+        st.write(f"Halaman **{st.session_state[mode_key]}** dari **{total_pages}**")
+
+    # "Potong" DataFrame untuk menampilkan data halaman saat ini
+    start_idx = (st.session_state[mode_key] - 1) * items_per_page
+    end_idx = min(start_idx + items_per_page, len(current_result_df))
+    paginated_df = current_result_df.iloc[start_idx:end_idx]
+
+    # Tampilkan tabel yang sudah dipaginasi
+    st.dataframe(paginated_df, use_container_width=True)
