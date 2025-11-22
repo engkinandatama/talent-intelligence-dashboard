@@ -160,6 +160,15 @@ if 'last_mode_used' not in st.session_state:
     st.session_state.last_mode_used = 'B'  # Default mode adalah B
 if 'expander_state' not in st.session_state:
     st.session_state.expander_state = True  # Defaultnya expander terbuka
+# --- Initialize Editing State for All Pagination Modes ---
+if 'editing_page_a' not in st.session_state:
+    st.session_state.editing_page_a = False
+if 'editing_page_b' not in st.session_state:
+    st.session_state.editing_page_b = False
+if 'editing_page_ab' not in st.session_state:
+    st.session_state.editing_page_ab = False
+if 'editing_page_final' not in st.session_state:
+    st.session_state.editing_page_final = False
 
 # --- Tombol Eksekusi ---
 run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
@@ -217,6 +226,44 @@ if run_button:
                 st.toast(f"✅ Perhitungan selesai! Ditemukan kecocokan untuk {len(final_result_df)} posisi.", icon="🎉")
                 st.subheader("📊 Rekomendasi Posisi untuk Karyawan Terpilih")
 
+                # Tambahkan Top 3 Podium
+                if not final_result_df.empty:
+                    st.subheader("🏆 Podium Kecocokan Teratas")
+
+                    # Ambil 3 kandidat teratas
+                    top_candidates = final_result_df.head(3).to_dict('records')
+
+                    # Buat kolom untuk podium
+                    cols = st.columns(len(top_candidates))
+
+                    # Definisikan peringkat
+                    ranks = {
+                        0: {"title": "🥇 1st Place", "size": "1.2rem"},
+                        1: {"title": "🥈 2nd Place", "size": "1.1rem"},
+                        2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                    }
+
+                    for i, candidate in enumerate(top_candidates):
+                        with cols[i]:
+                            with st.container(border=True):
+                                rank_info = ranks.get(i)
+                                st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
+                                st.markdown(f"<p style='text-align: center; font-weight: bold;'>{candidate['fullname']}</p>", unsafe_allow_html=True)
+                                st.caption(f"ID: {candidate['employee_id']}")
+                                st.divider()
+
+                                st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+
+                                # Menampilkan konteks benchmark
+                                benchmark_context = "Default" # Fallback
+                                if 'benchmark_position' in candidate:
+                                    benchmark_context = candidate['benchmark_position']
+                                st.markdown(f"**Benchmark:** {benchmark_context}")
+
+                                st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
+
+                    st.divider() # Tambahkan pemisah setelah podium
+
                 # Implementasi pagination baru
                 if final_result_df.empty:
                     st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
@@ -238,35 +285,96 @@ if run_button:
                     # Tampilkan tabel yang sudah dipaginasi
                     st.dataframe(paginated_df, use_container_width=True)
 
-                    # Tampilan navigasi dan informasi halaman (baru)
+                    # Tampilan navigasi dan informasi halaman (baru - dengan desain minimalis)
                     st.divider()
-                    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
-                    with col2:
-                        # Input untuk lompat ke halaman spesifik
-                        page_num = st.number_input(
-                            "Ke Halaman",
-                            min_value=1,
-                            max_value=total_pages,
-                            value=st.session_state.current_page_a,
-                            step=1,
-                            label_visibility="collapsed",
-                            key=f"jump_page_a_{hash(str(manual_ids))}"
-                        )
-                    with col3:
-                        if st.button("◀", use_container_width=True, disabled=(st.session_state.current_page_a <= 1)):
-                            if st.session_state.current_page_a > 1:
-                                st.session_state.current_page_a -= 1
-                            st.rerun()
-                    with col4:
-                        if st.button("▶", use_container_width=True, disabled=(st.session_state.current_page_a >= total_pages)):
-                            if st.session_state.current_page_a < total_pages:
-                                st.session_state.current_page_a += 1
-                            st.rerun()
-                    # Handling untuk input halaman
-                    if page_num != st.session_state.current_page_a and 1 <= page_num <= total_pages:
-                        st.session_state.current_page_a = page_num
-                        st.rerun()
+                    # Gunakan 3 kolom untuk menempatkan pagination di tengah
+                    _, mid_col, _ = st.columns([.3, .4, .3])
+
+                    with mid_col:
+                        # Gunakan 5 kolom untuk tata letak yang presisi
+                        _, col1, col2, col3, _ = st.columns([.2, .1, .2, .1, .2]) # Kolom tengah lebih lebar
+
+                        with col1:
+                            # Tombol "Sebelumnya"
+                            if st.button("◀", key=f"prev_page_a_{st.session_state.current_page_a}", use_container_width=True, disabled=(st.session_state.current_page_a <= 1)):
+                                st.session_state.editing_page_a = False # Keluar dari mode edit jika ada
+                                if st.session_state.current_page_a > 1:
+                                    st.session_state.current_page_a -= 1
+                                    st.rerun()
+
+                        with col2:
+                            # --- Logika untuk "Editable Text" ---
+
+                            # Fungsi callback yang akan dijalankan saat input berubah (Enter ditekan)
+                            def update_page_from_input_a():
+                                try:
+                                    new_page = int(st.session_state[f'page_input_a_{st.session_state.current_page_a}'])
+                                    if 1 <= new_page <= total_pages:
+                                        st.session_state.current_page_a = new_page
+                                except (ValueError, TypeError):
+                                    pass # Abaikan jika input tidak valid
+                                # Setelah input diproses, selalu kembali ke mode tampilan
+                                st.session_state.editing_page_a = False
+
+                            # Tampilkan input atau teks berdasarkan state
+                            if st.session_state.get('editing_page_a', False):
+                                st.text_input(
+                                    "Page",
+                                    value=str(st.session_state.current_page_a),
+                                    key=f"page_input_a_{st.session_state.current_page_a}",
+                                    on_change=update_page_from_input_a,
+                                    label_visibility="collapsed"
+                                )
+                            else:
+                                # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
+                                if st.button(f"{st.session_state.current_page_a} / {total_pages}", key=f"page_display_button_a_{st.session_state.current_page_a}", use_container_width=True):
+                                    st.session_state.editing_page_a = True
+                                    st.rerun() # Jalankan ulang untuk menampilkan text_input
+
+                        with col3:
+                            # Tombol "Berikutnya"
+                            if st.button("▶", key=f"next_page_a_{st.session_state.current_page_a}", use_container_width=True, disabled=(st.session_state.current_page_a >= total_pages)):
+                                st.session_state.editing_page_a = False # Keluar dari mode edit jika ada
+                                if st.session_state.current_page_a < total_pages:
+                                    st.session_state.current_page_a += 1
+                                    st.rerun()
+
+                    # CSS untuk membuat tombol dan input terlihat minimalis
+                    st.markdown("""
+        <style>
+            /* Style untuk tombol navigasi */
+            div[data-testid*="stButton"] > button[kind="secondary"] {
+                background-color: transparent; border: none; color: #2563EB; font-size: 1.2rem; font-weight: bold;
+            }
+            div[data-testid*="stButton"] > button[kind="secondary"]:hover { color: #FF4B4B; border: none; }
+            div[data-testid*="stButton"] > button[kind="secondary"]:disabled { color: #4F4F4F; border: none; }
+
+            /* Style untuk tombol yang menampilkan halaman (page_display) */
+            div[data-testid*="stButton"] > button[data-testid="baseButton-secondary"] {
+                text-align: center;
+                background-color: transparent !important;
+                border: none !important;
+            }
+
+            /* Style untuk text input agar terlihat menyatu */
+            div[data-testid="stTextInput"] input {
+                text-align: center;
+                background-color: transparent !important;
+                border: none !important;
+                border-bottom: 1px solid #4F4F4F !important;
+                outline: none;
+                box-shadow: none !important;
+                padding: 0px !important;
+                font-weight: bold;
+                font-size: 1rem;
+            }
+            div[data-testid="stTextInput"] input:focus {
+                border-bottom: 2px solid #2563EB !important;
+                box-shadow: none !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
                 # Tambahkan informasi tambahan
                 st.info("Angka `final_match_rate` menunjukkan seberapa cocok karyawan terhadap posisi tersebut. Semakin tinggi nilainya, semakin cocok.")
@@ -295,6 +403,44 @@ if run_button:
                     st.toast(f"✅ Perhitungan selesai! Ditemukan {len(result_df)} karyawan.", icon="🎉")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
 
+                    # Tambahkan Top 3 Podium
+                    if not result_df.empty:
+                        st.subheader("🏆 Podium Kecocokan Teratas")
+
+                        # Ambil 3 kandidat teratas
+                        top_candidates = result_df.head(3).to_dict('records')
+
+                        # Buat kolom untuk podium
+                        cols = st.columns(len(top_candidates))
+
+                        # Definisikan peringkat
+                        ranks = {
+                            0: {"title": "🥇 1st Place", "size": "1.2rem"},
+                            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
+                            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                        }
+
+                        for i, candidate in enumerate(top_candidates):
+                            with cols[i]:
+                                with st.container(border=True):
+                                    rank_info = ranks.get(i)
+                                    st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
+                                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{candidate['fullname']}</p>", unsafe_allow_html=True)
+                                    st.caption(f"ID: {candidate['employee_id']}")
+                                    st.divider()
+
+                                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+
+                                    # Menampilkan konteks benchmark
+                                    benchmark_context = "Default" # Fallback
+                                    if 'benchmark_position' in candidate:
+                                        benchmark_context = candidate['benchmark_position']
+                                    st.markdown(f"**Benchmark:** {benchmark_context}")
+
+                                    st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
+
+                        st.divider() # Tambahkan pemisah setelah podium
+
                     # Implementasi pagination baru
                     if result_df.empty:
                         st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
@@ -316,35 +462,96 @@ if run_button:
                         # Tampilkan tabel yang sudah dipaginasi
                         st.dataframe(paginated_df, use_container_width=True)
 
-                        # Tampilan navigasi dan informasi halaman (baru)
+                        # Tampilan navigasi dan informasi halaman (baru - dengan desain minimalis)
                         st.divider()
-                        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
-                        with col2:
-                            # Input untuk lompat ke halaman spesifik
-                            page_num = st.number_input(
-                                "Ke Halaman",
-                                min_value=1,
-                                max_value=total_pages,
-                                value=st.session_state.current_page_b,
-                                step=1,
-                                label_visibility="collapsed",
-                                key=f"jump_page_b_{hash(str(filters))}"
-                            )
-                        with col3:
-                            if st.button("◀", use_container_width=True, disabled=(st.session_state.current_page_b <= 1)):
-                                if st.session_state.current_page_b > 1:
-                                    st.session_state.current_page_b -= 1
-                                st.rerun()
-                        with col4:
-                            if st.button("▶", use_container_width=True, disabled=(st.session_state.current_page_b >= total_pages)):
-                                if st.session_state.current_page_b < total_pages:
-                                    st.session_state.current_page_b += 1
-                                st.rerun()
-                        # Handling untuk input halaman
-                        if page_num != st.session_state.current_page_b and 1 <= page_num <= total_pages:
-                            st.session_state.current_page_b = page_num
-                            st.rerun()
+                        # Gunakan 3 kolom untuk menempatkan pagination di tengah
+                        _, mid_col, _ = st.columns([.3, .4, .3])
+
+                        with mid_col:
+                            # Gunakan 5 kolom untuk tata letak yang presisi
+                            _, col1, col2, col3, _ = st.columns([.2, .1, .2, .1, .2]) # Kolom tengah lebih lebar
+
+                            with col1:
+                                # Tombol "Sebelumnya"
+                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b <= 1)):
+                                    st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
+                                    if st.session_state.current_page_b > 1:
+                                        st.session_state.current_page_b -= 1
+                                        st.rerun()
+
+                            with col2:
+                                # --- Logika untuk "Editable Text" ---
+
+                                # Fungsi callback yang akan dijalankan saat input berubah (Enter ditekan)
+                                def update_page_from_input_b():
+                                    try:
+                                        new_page = int(st.session_state[f'page_input_b_{st.session_state.current_page_b}'])
+                                        if 1 <= new_page <= total_pages:
+                                            st.session_state.current_page_b = new_page
+                                    except (ValueError, TypeError):
+                                        pass # Abaikan jika input tidak valid
+                                    # Setelah input diproses, selalu kembali ke mode tampilan
+                                    st.session_state.editing_page_b = False
+
+                                # Tampilkan input atau teks berdasarkan state
+                                if st.session_state.get('editing_page_b', False):
+                                    st.text_input(
+                                        "Page",
+                                        value=str(st.session_state.current_page_b),
+                                        key=f"page_input_b_{st.session_state.current_page_b}",
+                                        on_change=update_page_from_input_b,
+                                        label_visibility="collapsed"
+                                    )
+                                else:
+                                    # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
+                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", use_container_width=True):
+                                        st.session_state.editing_page_b = True
+                                        st.rerun() # Jalankan ulang untuk menampilkan text_input
+
+                            with col3:
+                                # Tombol "Berikutnya"
+                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b >= total_pages)):
+                                    st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
+                                    if st.session_state.current_page_b < total_pages:
+                                        st.session_state.current_page_b += 1
+                                        st.rerun()
+
+                        # CSS untuk membuat tombol dan input terlihat minimalis
+                        st.markdown("""
+            <style>
+                /* Style untuk tombol navigasi */
+                div[data-testid*="stButton"] > button[kind="secondary"] {
+                    background-color: transparent; border: none; color: #2563EB; font-size: 1.2rem; font-weight: bold;
+                }
+                div[data-testid*="stButton"] > button[kind="secondary"]:hover { color: #FF4B4B; border: none; }
+                div[data-testid*="stButton"] > button[kind="secondary"]:disabled { color: #4F4F4F; border: none; }
+
+                /* Style untuk tombol yang menampilkan halaman (page_display) */
+                div[data-testid*="stButton"] > button[data-testid="baseButton-secondary"] {
+                    text-align: center;
+                    background-color: transparent !important;
+                    border: none !important;
+                }
+
+                /* Style untuk text input agar terlihat menyatu */
+                div[data-testid="stTextInput"] input {
+                    text-align: center;
+                    background-color: transparent !important;
+                    border: none !important;
+                    border-bottom: 1px solid #4F4F4F !important;
+                    outline: none;
+                    box-shadow: none !important;
+                    padding: 0px !important;
+                    font-weight: bold;
+                    font-size: 1rem;
+                }
+                div[data-testid="stTextInput"] input:focus {
+                    border-bottom: 2px solid #2563EB !important;
+                    box-shadow: none !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
@@ -395,6 +602,44 @@ if run_button:
                     st.toast(f"✅ Perhitungan selesai! Ditemukan {len(result_df)} kandidat yang cocok.", icon="🎉")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
 
+                    # Tambahkan Top 3 Podium
+                    if not result_df.empty:
+                        st.subheader("🏆 Podium Kecocokan Teratas")
+
+                        # Ambil 3 kandidat teratas
+                        top_candidates = result_df.head(3).to_dict('records')
+
+                        # Buat kolom untuk podium
+                        cols = st.columns(len(top_candidates))
+
+                        # Definisikan peringkat
+                        ranks = {
+                            0: {"title": "🥇 1st Place", "size": "1.2rem"},
+                            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
+                            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                        }
+
+                        for i, candidate in enumerate(top_candidates):
+                            with cols[i]:
+                                with st.container(border=True):
+                                    rank_info = ranks.get(i)
+                                    st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
+                                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{candidate['fullname']}</p>", unsafe_allow_html=True)
+                                    st.caption(f"ID: {candidate['employee_id']}")
+                                    st.divider()
+
+                                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+
+                                    # Menampilkan konteks benchmark
+                                    benchmark_context = "Default" # Fallback
+                                    if 'benchmark_position' in candidate:
+                                        benchmark_context = candidate['benchmark_position']
+                                    st.markdown(f"**Benchmark:** {benchmark_context}")
+
+                                    st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
+
+                        st.divider() # Tambahkan pemisah setelah podium
+
                     # Implementasi pagination dengan session_state yang terpisah untuk setiap mode
                     if result_df.empty:
                         st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
@@ -428,35 +673,96 @@ if run_button:
                         # Tampilkan tabel yang sudah dipaginasi
                         st.dataframe(paginated_df, use_container_width=True)
 
-                        # Tampilan navigasi dan informasi halaman (baru)
+                        # Tampilan navigasi dan informasi halaman (baru - dengan desain minimalis)
                         st.divider()
-                        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
-                        with col2:
-                            # Input untuk lompat ke halaman spesifik
-                            page_num = st.number_input(
-                                "Ke Halaman",
-                                min_value=1,
-                                max_value=total_pages,
-                                value=st.session_state[mode_key],
-                                step=1,
-                                label_visibility="collapsed",
-                                key=f"jump_page_ab_{mode_key}_{hash(str(manual_ids))}"
-                            )
-                        with col3:
-                            if st.button("◀", use_container_width=True, disabled=(st.session_state[mode_key] <= 1), key=f"prev_btn_{mode_key}"):
-                                if st.session_state[mode_key] > 1:
-                                    st.session_state[mode_key] -= 1
-                                st.rerun()
-                        with col4:
-                            if st.button("▶", use_container_width=True, disabled=(st.session_state[mode_key] >= total_pages), key=f"next_btn_{mode_key}"):
-                                if st.session_state[mode_key] < total_pages:
-                                    st.session_state[mode_key] += 1
-                                st.rerun()
-                        # Handling untuk input halaman
-                        if page_num != st.session_state[mode_key] and 1 <= page_num <= total_pages:
-                            st.session_state[mode_key] = page_num
-                            st.rerun()
+                        # Gunakan 3 kolom untuk menempatkan pagination di tengah
+                        _, mid_col, _ = st.columns([.3, .4, .3])
+
+                        with mid_col:
+                            # Gunakan 5 kolom untuk tata letak yang presisi
+                            _, col1, col2, col3, _ = st.columns([.2, .1, .2, .1, .2]) # Kolom tengah lebih lebar
+
+                            with col1:
+                                # Tombol "Sebelumnya"
+                                if st.button("◀", key=f"prev_page_ab_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] <= 1)):
+                                    st.session_state.editing_page_ab = False # Keluar dari mode edit jika ada
+                                    if st.session_state[mode_key] > 1:
+                                        st.session_state[mode_key] -= 1
+                                        st.rerun()
+
+                            with col2:
+                                # --- Logika untuk "Editable Text" ---
+
+                                # Fungsi callback yang akan dijalankan saat input berubah (Enter ditekan)
+                                def update_page_from_input_ab():
+                                    try:
+                                        new_page = int(st.session_state[f'page_input_ab_{st.session_state[mode_key]}'])
+                                        if 1 <= new_page <= total_pages:
+                                            st.session_state[mode_key] = new_page
+                                    except (ValueError, TypeError):
+                                        pass # Abaikan jika input tidak valid
+                                    # Setelah input diproses, selalu kembali ke mode tampilan
+                                    st.session_state.editing_page_ab = False
+
+                                # Tampilkan input atau teks berdasarkan state
+                                if st.session_state.get('editing_page_ab', False):
+                                    st.text_input(
+                                        "Page",
+                                        value=str(st.session_state[mode_key]),
+                                        key=f"page_input_ab_{st.session_state[mode_key]}",
+                                        on_change=update_page_from_input_ab,
+                                        label_visibility="collapsed"
+                                    )
+                                else:
+                                    # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
+                                    if st.button(f"{st.session_state[mode_key]} / {total_pages}", key=f"page_display_button_ab_{st.session_state[mode_key]}", use_container_width=True):
+                                        st.session_state.editing_page_ab = True
+                                        st.rerun() # Jalankan ulang untuk menampilkan text_input
+
+                            with col3:
+                                # Tombol "Berikutnya"
+                                if st.button("▶", key=f"next_page_ab_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] >= total_pages)):
+                                    st.session_state.editing_page_ab = False # Keluar dari mode edit jika ada
+                                    if st.session_state[mode_key] < total_pages:
+                                        st.session_state[mode_key] += 1
+                                        st.rerun()
+
+                        # CSS untuk membuat tombol dan input terlihat minimalis
+                        st.markdown("""
+            <style>
+                /* Style untuk tombol navigasi */
+                div[data-testid*="stButton"] > button[kind="secondary"] {
+                    background-color: transparent; border: none; color: #2563EB; font-size: 1.2rem; font-weight: bold;
+                }
+                div[data-testid*="stButton"] > button[kind="secondary"]:hover { color: #FF4B4B; border: none; }
+                div[data-testid*="stButton"] > button[kind="secondary"]:disabled { color: #4F4F4F; border: none; }
+
+                /* Style untuk tombol yang menampilkan halaman (page_display) */
+                div[data-testid*="stButton"] > button[data-testid="baseButton-secondary"] {
+                    text-align: center;
+                    background-color: transparent !important;
+                    border: none !important;
+                }
+
+                /* Style untuk text input agar terlihat menyatu */
+                div[data-testid="stTextInput"] input {
+                    text-align: center;
+                    background-color: transparent !important;
+                    border: none !important;
+                    border-bottom: 1px solid #4F4F4F !important;
+                    outline: none;
+                    box-shadow: none !important;
+                    padding: 0px !important;
+                    font-weight: bold;
+                    font-size: 1rem;
+                }
+                div[data-testid="stTextInput"] input:focus {
+                    border-bottom: 2px solid #2563EB !important;
+                    box-shadow: none !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error("Terjadi kesalahan saat menjalankan query.")
                     st.exception(e)
@@ -467,6 +773,44 @@ else:
 # Ini akan aktif saat run_button tidak diklik tapi hasil sebelumnya masih ada di session_state
 if not run_button and 'search_results' in st.session_state and st.session_state.search_results is not None and not st.session_state.search_results.empty:
     st.subheader("📊 Peringkat Kecocokan Talenta (Hasil Tersimpan)")
+
+    # Tambahkan Top 3 Podium
+    if not st.session_state.search_results.empty:
+        st.subheader("🏆 Podium Kecocokan Teratas")
+
+        # Ambil 3 kandidat teratas
+        top_candidates = st.session_state.search_results.head(3).to_dict('records')
+
+        # Buat kolom untuk podium
+        cols = st.columns(len(top_candidates))
+
+        # Definisikan peringkat
+        ranks = {
+            0: {"title": "🥇 1st Place", "size": "1.2rem"},
+            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
+            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+        }
+
+        for i, candidate in enumerate(top_candidates):
+            with cols[i]:
+                with st.container(border=True):
+                    rank_info = ranks.get(i)
+                    st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{candidate['fullname']}</p>", unsafe_allow_html=True)
+                    st.caption(f"ID: {candidate['employee_id']}")
+                    st.divider()
+
+                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+
+                    # Menampilkan konteks benchmark
+                    benchmark_context = "Default" # Fallback
+                    if 'benchmark_position' in candidate:
+                        benchmark_context = candidate['benchmark_position']
+                    st.markdown(f"**Benchmark:** {benchmark_context}")
+
+                    st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
+
+        st.divider() # Tambahkan pemisah setelah podium
 
     # Gunakan hasil dari session state
     current_result_df = st.session_state.search_results
@@ -498,43 +842,93 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
     # Tampilkan tabel yang sudah dipaginasi
     st.dataframe(paginated_df, use_container_width=True)
 
-    # Tampilan navigasi dan informasi halaman (baru)
+    # Tampilan navigasi dan informasi halaman (baru - dengan desain minimalis)
     st.divider()
-    cols = st.columns([3, 1, 0.5, 0.5, 1, 0.5, 0.5, 3])
 
-    with cols[1]:
-        # Tampilkan informasi halaman saat ini
-        st.text(f"{st.session_state[mode_key]} / {total_pages}")
+    # Gunakan 3 kolom untuk menempatkan pagination di tengah
+    _, mid_col, _ = st.columns([.3, .4, .3])
 
-    with cols[2]:
-        if st.button("◀", use_container_width=True, disabled=(st.session_state[mode_key] <= 1), key=f"nav_prev_final_{mode_key}"):
-            if st.session_state[mode_key] > 1:
-                st.session_state[mode_key] -= 1
-            st.rerun()
-    with cols[3]:
-        if st.button("▶", use_container_width=True, disabled=(st.session_state[mode_key] >= total_pages), key=f"nav_next_final_{mode_key}"):
-            if st.session_state[mode_key] < total_pages:
-                st.session_state[mode_key] += 1
-            st.rerun()
+    with mid_col:
+        # Gunakan 5 kolom untuk tata letak yang presisi
+        _, col1, col2, col3, _ = st.columns([.2, .1, .2, .1, .2]) # Kolom tengah lebih lebar
 
-    with cols[5]:
-        # Input untuk lompat ke halaman spesifik
-        page_num = st.number_input(
-            "Ke Hal.",
-            min_value=1,
-            max_value=total_pages,
-            value=st.session_state[mode_key],
-            step=1,
-            label_visibility="collapsed",
-            key=f"nav_jump_final_{mode_key}"
-        )
-    with cols[6]:
-        if st.button("→", key=f"jump_final_{mode_key}"):
-            if 1 <= page_num <= total_pages:
-                st.session_state[mode_key] = page_num
-                st.rerun()
+        with col1:
+            # Tombol "Sebelumnya"
+            if st.button("◀", key=f"prev_page_final_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] <= 1)):
+                st.session_state.editing_page_final = False # Keluar dari mode edit jika ada
+                if st.session_state[mode_key] > 1:
+                    st.session_state[mode_key] -= 1
+                    st.rerun()
 
-    # Handling untuk input halaman
-    if page_num != st.session_state[mode_key] and 1 <= page_num <= total_pages:
-        st.session_state[mode_key] = page_num
-        st.rerun()
+        with col2:
+            # --- Logika untuk "Editable Text" ---
+
+            # Fungsi callback yang akan dijalankan saat input berubah (Enter ditekan)
+            def update_page_from_input_final():
+                try:
+                    new_page = int(st.session_state[f'page_input_final_{st.session_state[mode_key]}'])
+                    if 1 <= new_page <= total_pages:
+                        st.session_state[mode_key] = new_page
+                except (ValueError, TypeError):
+                    pass # Abaikan jika input tidak valid
+                # Setelah input diproses, selalu kembali ke mode tampilan
+                st.session_state.editing_page_final = False
+
+            # Tampilkan input atau teks berdasarkan state
+            if st.session_state.get('editing_page_final', False):
+                st.text_input(
+                    "Page",
+                    value=str(st.session_state[mode_key]),
+                    key=f"page_input_final_{st.session_state[mode_key]}",
+                    on_change=update_page_from_input_final,
+                    label_visibility="collapsed"
+                )
+            else:
+                # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
+                if st.button(f"{st.session_state[mode_key]} / {total_pages}", key=f"page_display_button_final_{st.session_state[mode_key]}", use_container_width=True):
+                    st.session_state.editing_page_final = True
+                    st.rerun() # Jalankan ulang untuk menampilkan text_input
+
+        with col3:
+            # Tombol "Berikutnya"
+            if st.button("▶", key=f"next_page_final_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] >= total_pages)):
+                st.session_state.editing_page_final = False # Keluar dari mode edit jika ada
+                if st.session_state[mode_key] < total_pages:
+                    st.session_state[mode_key] += 1
+                    st.rerun()
+
+    # CSS untuk membuat tombol dan input terlihat minimalis
+    st.markdown("""
+    <style>
+        /* Style untuk tombol navigasi */
+        div[data-testid*="stButton"] > button[kind="secondary"] {
+            background-color: transparent; border: none; color: #2563EB; font-size: 1.2rem; font-weight: bold;
+        }
+        div[data-testid*="stButton"] > button[kind="secondary"]:hover { color: #FF4B4B; border: none; }
+        div[data-testid*="stButton"] > button[kind="secondary"]:disabled { color: #4F4F4F; border: none; }
+
+        /* Style untuk tombol yang menampilkan halaman (page_display) */
+        div[data-testid*="stButton"] > button[data-testid="baseButton-secondary"] {
+            text-align: center;
+            background-color: transparent !important;
+            border: none !important;
+        }
+
+        /* Style untuk text input agar terlihat menyatu */
+        div[data-testid="stTextInput"] input {
+            text-align: center;
+            background-color: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid #4F4F4F !important;
+            outline: none;
+            box-shadow: none !important;
+            padding: 0px !important;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        div[data-testid="stTextInput"] input:focus {
+            border-bottom: 2px solid #2563EB !important;
+            box-shadow: none !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)

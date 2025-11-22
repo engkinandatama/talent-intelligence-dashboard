@@ -19,3 +19,41 @@ h1, h2, h3 {
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     margin-bottom: 20px;
 }
+
+/* Tambahkan ini di akhir file assets/css/style.css */
+
+.minimal-button {
+    background-color: transparent !important;
+    color: #2563EB !important; /* Ganti dengan warna teks yang sesuai dengan tema Anda */
+    border: none !important;
+    padding: 0 !important;
+    font-size: 1.2rem; /* Sesuaikan ukuran ikon/teks */
+    font-weight: bold;
+    text-align: center;
+}
+
+.minimal-button:hover {
+    color: #FF4B4B !important; /* Warna saat di-hover */
+    text-decoration: none;
+}
+
+.minimal-button:disabled {
+    color: #4F4F4F !important; /* Warna saat tombol non-aktif */
+    cursor: not-allowed;
+}
+
+/* Pagination container styling */
+.pagination-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    margin-top: 15px;
+    padding: 10px 0 0 0;
+}
+
+.pagination-text {
+    font-size: 0.9rem;
+    color: #4F4F4F;
+    white-space: nowrap;
+}
