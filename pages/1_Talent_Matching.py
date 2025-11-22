@@ -35,27 +35,22 @@ with st.container():
 
     # Bagian Benchmark (Wajib untuk Matching)
     with st.expander("1. Mode Pencarian", expanded=True):
-        # Mode A: Input teks untuk ID/Nama Karyawan (hanya ini)
+        # Mode A: Multi-select karyawan dengan chips
         with st.container():
-            st.subheader("Mode A: Input Manual Karyawan")
-            manual_input = st.text_input("Cari Karyawan (berdasarkan Nama atau Employee ID)", placeholder="Ketik nama atau ID karyawan...")
+            st.subheader("Mode A: Pilih Karyawan")
 
-            # Jika ada input, langsung lacak karyawan tanpa dropdown
-            manual_ids = []
-            if manual_input:
-                search_results = employees_df[
-                    employees_df['fullname'].str.contains(manual_input, case=False, na=False) |
-                    employees_df['employee_id'].str.contains(manual_input, case=False, na=False)
-                ]
+            # Siapkan daftar pilihan untuk multiselect
+            employee_options = [f"{row.employee_id} — {row.fullname}" for _, row in employees_df.iterrows()]
 
-                if not search_results.empty:
-                    # Secara otomatis track semua hasil pencarian
-                    manual_ids = search_results['employee_id'].tolist()
-                    found_names = [f"{row.employee_id} — {row.fullname}" for _, row in search_results.iterrows()]
-                    st.info(f"Ditemukan {len(found_names)} karyawan: {', '.join(found_names)}")
-                else:
-                    st.warning("Tidak ada karyawan ditemukan.")
-            # Jika tidak ada input, manual_ids tetap kosong
+            # Gunakan st.multiselect
+            selected_employees_mode_a = st.multiselect(
+                "Pilih satu atau beberapa karyawan",
+                options=employee_options,
+                help="Ketik untuk mencari, lalu pilih karyawan. Setiap karyawan yang dipilih akan dianalisis kecocokannya terhadap semua posisi."
+            )
+
+            # Ekstrak hanya employee_id dari hasil pilihan
+            manual_ids = [item.split(" — ", 1)[0] for item in selected_employees_mode_a]
 
         st.divider()  # Pemisah antara Mode A dan Mode B
 
@@ -302,20 +297,33 @@ if run_button:
             # Mode B saja atau Mode A+B
             with st.spinner("Menjalankan algoritma Talent Matching..."):
                 try:
-                    result_df = run_standard_match_query(
-                        engine,
-                        manual_ids_for_benchmark=manual_ids if manual_ids else None,
-                        target_position_id_for_benchmark=None,
-                        filters=filters,
-                        search_name=None,
-                        rating_range=rating_range,  # Gunakan rentang rating dari slider
-                        limit=result_limit,  # Gunakan jumlah hasil yang ditentukan pengguna
-                        manual_ids_to_filter=None
-                    )
-
-                    # Jika mode A+B (Mode A+B aktif), hanya tampilkan karyawan dari Mode A
-                    if mode_a_active and has_active_filters:
-                        result_df = result_df[result_df['employee_id'].isin(manual_ids)]
+                    # Mode A+B: Kita ingin menentukan seberapa cocok karyawan dari Mode A terhadap kriteria yang ditentukan di Mode B
+                    # Kita ingin mencari kecocokan karyawan dari Mode A terhadap benchmark dari kriteria Mode B
+                    if mode_a_active and (filter_position_id or any(filters.values())):
+                        # Mode A+B - Hitung kecocokan karyawan dari Mode A terhadap benchmark yang ditentukan oleh filter Mode B
+                        # Kita gunakan filter dari Mode B untuk menentukan benchmark, dan filter hasil hanya untuk karyawan dari Mode A
+                        result_df = run_standard_match_query(
+                            engine,
+                            manual_ids_for_benchmark=None,  # Jangan gunakan manual_ids sebagai benchmark
+                            target_position_id_for_benchmark=filter_position_id,  # Gunakan posisi sebagai benchmark jika dipilih
+                            filters=filters,  # Terapkan filter lainnya
+                            search_name=None,
+                            rating_range=rating_range,
+                            limit=result_limit,
+                            manual_ids_to_filter=manual_ids  # Filter hasil hanya untuk karyawan dari Mode A
+                        )
+                    else:
+                        # Mode B saja atau Mode A tanpa filter
+                        result_df = run_standard_match_query(
+                            engine,
+                            manual_ids_for_benchmark=manual_ids if manual_ids else None,
+                            target_position_id_for_benchmark=None,
+                            filters=filters,
+                            search_name=None,
+                            rating_range=rating_range,
+                            limit=result_limit,
+                            manual_ids_to_filter=None
+                        )
 
                     st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} kandidat yang cocok.")
                     st.subheader("📊 Peringkat Kecocokan Talenta")
