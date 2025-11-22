@@ -187,12 +187,14 @@ def run_standard_match_query(engine, manual_ids_for_benchmark=None, target_posit
         GROUP BY employee_id
     )
     
-    SELECT 
-        e.employee_id, 
+    SELECT
+        e.employee_id,
         e.fullname,
         pos.name as position_name,
         dep.name as department_name,
         div.name as division_name,
+        g.name as grade_name,                          -- DITAMBAHKAN
+        ROUND(e.years_of_service_months / 12.0, 1) as experience_years, -- DITAMBAHKAN
         py.rating,
         fm.final_match_rate
     FROM final_match fm
@@ -201,6 +203,7 @@ def run_standard_match_query(engine, manual_ids_for_benchmark=None, target_posit
     LEFT JOIN dim_positions pos ON e.position_id = pos.position_id
     LEFT JOIN dim_departments dep ON e.department_id = dep.department_id
     LEFT JOIN dim_divisions div ON e.division_id = div.division_id
+    LEFT JOIN dim_grades g ON e.grade_id = g.grade_id -- JOIN BARU
     WHERE py.rating BETWEEN :min_rating_filter AND :max_rating_filter {filter_clause}
     ORDER BY final_match_rate DESC
     LIMIT :limit_val;
