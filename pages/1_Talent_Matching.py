@@ -1,3 +1,5 @@
+# pages/1_Talent_Matching.py
+
 import streamlit as st
 import pandas as pd
 from core.db import get_engine
@@ -10,73 +12,229 @@ st.caption("Temukan talenta internal terbaik berdasarkan profil benchmark.")
 
 engine = get_engine()
 
-# Fungsi untuk memuat data dropdown dari database
-@st.cache_data(ttl=3600) # Cache data selama 1 jam
-def load_dropdown_data():
+# --- Memuat semua data untuk dropdown filter ---
+@st.cache_data(ttl=3600)
+def load_all_dimensions():
     with engine.connect() as conn:
-        # Mengambil nama posisi dari tabel dim_positions
         positions = pd.read_sql("SELECT position_id, name FROM dim_positions ORDER BY name", conn)
-        # Mengambil nama karyawan dari tabel employees
         employees = pd.read_sql("SELECT employee_id, fullname FROM employees ORDER BY fullname", conn)
-    return positions, employees
+        departments = pd.read_sql("SELECT department_id, name FROM dim_departments ORDER BY name", conn)
+        divisions = pd.read_sql("SELECT division_id, name FROM dim_divisions ORDER BY name", conn)
+        grades = pd.read_sql("SELECT grade_id, name FROM dim_grades ORDER BY name", conn)
+    return positions, employees, departments, divisions, grades
 
 try:
-    positions_df, employees_df = load_dropdown_data()
+    positions_df, employees_df, departments_df, divisions_df, grades_df = load_all_dimensions()
 except Exception as e:
-    st.error(f"Gagal memuat data untuk filter dari database: {e}")
+    st.error(f"Gagal memuat data filter dari database: {e}")
     st.stop()
 
-# --- UI Kontrol di Sidebar ---
-st.sidebar.header("⚙️ Pengaturan Benchmark")
+# --- UI Panel Filter (Desain baru sesuai permintaan yang direvisi) ---
+with st.container():
+    st.header("⚙️ Pengaturan Pencarian & Benchmark")
 
-min_rating = st.sidebar.slider(
-    "Rating Minimum 'High Performer'",
-    min_value=1, max_value=5, value=5,
-    help="Hanya karyawan dengan rating ini atau lebih tinggi yang akan dipertimbangkan dalam benchmark otomatis."
-)
+    # Bagian Benchmark (Wajib untuk Matching)
+    with st.expander("1. Mode Pencarian", expanded=True):
+        # Mode A: Input teks untuk ID/Nama Karyawan (hanya ini)
+        with st.container():
+            st.subheader("Mode A: Input Manual Karyawan")
+            manual_input = st.text_input("Cari Karyawan (berdasarkan Nama atau Employee ID)", placeholder="Ketik nama atau ID karyawan...")
 
-# --- Mode A: Benchmark Manual ---
-st.sidebar.subheader("Mode A: Benchmark Manual")
-manual_selection = st.sidebar.multiselect(
-    "Pilih Karyawan Benchmark",
-    options=[f"{row.employee_id} — {row.fullname}" for _, row in employees_df.iterrows()],
-    help="Pilih 1-5 karyawan untuk dijadikan tolak ukur manual."
-)
-manual_ids = [item.split(" — ")[0] for item in manual_selection]
+            # Jika ada input, langsung lacak karyawan tanpa dropdown
+            manual_ids = []
+            if manual_input:
+                search_results = employees_df[
+                    employees_df['fullname'].str.contains(manual_input, case=False, na=False) |
+                    employees_df['employee_id'].str.contains(manual_input, case=False, na=False)
+                ]
 
-# --- Mode B: Benchmark Berdasarkan Posisi ---
-st.sidebar.subheader("Mode B: Benchmark Berdasarkan Posisi")
-position_name_map = dict(zip(positions_df['name'], positions_df['position_id']))
-selected_position_name = st.sidebar.selectbox(
-    "Pilih Posisi Target",
-    options=["(Tidak ada)"] + list(position_name_map.keys()),
-    help="Sistem akan otomatis menggunakan semua high-performer dari posisi ini sebagai benchmark."
-)
-target_position_id = None
-if selected_position_name != "(Tidak ada)":
-    target_position_id = position_name_map[selected_position_name]
+                if not search_results.empty:
+                    # Secara otomatis track semua hasil pencarian
+                    manual_ids = search_results['employee_id'].tolist()
+                    found_names = [f"{row.employee_id} — {row.fullname}" for _, row in search_results.iterrows()]
+                    st.info(f"Ditemukan {len(found_names)} karyawan: {', '.join(found_names)}")
+                else:
+                    st.warning("Tidak ada karyawan ditemukan.")
+            # Jika tidak ada input, manual_ids tetap kosong
 
-st.sidebar.info("Anda bisa menggunakan Mode A, Mode B, atau keduanya secara bersamaan.")
+        st.divider()  # Pemisah antara Mode A dan Mode B
+
+        # Mode B: Filter berdasarkan dimensi + rating
+        with st.container():
+            st.subheader("Mode B: Filter Kriteria")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                pos_map = dict(zip(positions_df['name'], positions_df['position_id']))
+                # Ganti "(Semua)" dengan "None" agar lebih jelas bahwa filter tidak aktif
+                pos_options = ["(Tidak dipilih)"] + list(pos_map.keys())
+                pos_name = st.selectbox("Pilih Posisi", pos_options, index=0)
+                filter_position_id = pos_map.get(pos_name) if pos_name != "(Tidak dipilih)" else None
+
+            with col2:
+                dep_map = dict(zip(departments_df['name'], departments_df['department_id']))
+                dep_options = ["(Tidak dipilih)"] + list(dep_map.keys())
+                dep_name = st.selectbox("Pilih Departemen", dep_options, index=0)
+                filter_department_id = dep_map.get(dep_name) if dep_name != "(Tidak dipilih)" else None
+
+            col3, col4 = st.columns(2)
+
+            with col3:
+                div_map = dict(zip(divisions_df['name'], divisions_df['division_id']))
+                div_options = ["(Tidak dipilih)"] + list(div_map.keys())
+                div_name = st.selectbox("Pilih Divisi", div_options, index=0)
+                filter_division_id = div_map.get(div_name) if div_name != "(Tidak dipilih)" else None
+
+            with col4:
+                grade_map = dict(zip(grades_df['name'], grades_df['grade_id']))
+                grade_options = ["(Tidak dipilih)"] + list(grade_map.keys())
+                grade_name = st.selectbox("Pilih Grade", grade_options, index=0)
+                filter_grade_id = grade_map.get(grade_name) if grade_name != "(Tidak dipilih)" else None
+
+            # Rating hanya aktif jika bukan Mode A+B
+            mode_a_active = len(manual_ids) > 0
+            # Mode B aktif jika setidaknya satu filter dipilih (tidak "(Tidak dipilih)")
+            mode_b_active = (filter_position_id is not None or filter_department_id is not None or
+                             filter_division_id is not None or filter_grade_id is not None)
+
+            # Jika semua filter tidak dipilih (default), kita tetap ingin Mode B aktif untuk menampilkan semua karyawan yang sesuai rating
+            if not mode_b_active and not mode_a_active:
+                # Dalam kasus ini, jika hanya Mode B yang diaktifkan tanpa filter aktif, tetap dianggap Mode B aktif
+                # Ini untuk memungkinkan tampilan semua karyawan yang sesuai rating
+                mode_b_active = True
+
+            if mode_a_active and mode_b_active:
+                # Jika Mode A+B diaktifkan, rating otomatis non-aktif
+                min_rating = 1  # Default nilai, karena rating tidak digunakan
+                st.info("ℹ️ Rating performance dinonaktifkan karena Mode A dan B digunakan bersamaan (tidak akan terjadi konflik).")
+            else:
+                min_rating = st.slider("Rating Minimum 'High Performer'", 1, 5, 5)
+
+        # Penjelasan untuk skenario
+        st.divider()
+        st.markdown("**Penjelasan Mode:**")
+
+        if manual_ids and not (filter_position_id or filter_department_id or filter_division_id or filter_grade_id):
+            st.info("🔍 **Mode A Saja**: Menampilkan informasi profil untuk karyawan yang Anda input secara spesifik.")
+        elif not manual_ids and (filter_position_id or filter_department_id or filter_division_id or filter_grade_id):
+            st.info("⚙️ **Mode B Saja**: Menampilkan semua karyawan yang memenuhi kriteria filter dan rating performance yang ditentukan.")
+        elif manual_ids and (filter_position_id or filter_department_id or filter_division_id or filter_grade_id):
+            st.info("🔍⚙️ **Mode A & B**: Menampilkan tingkat kecocokan antara karyawan dari Mode A terhadap kriteria filter dari Mode B.")
+        else:
+            st.info("📋 **Default**: Jika tidak ada filter yang dipilih, sistem akan menampilkan semua karyawan dengan rating tinggi sebagai benchmark default.")
 
 # --- Tombol Eksekusi ---
-if st.sidebar.button("🚀 Jalankan Talent Match", use_container_width=True):
-    if not manual_ids and not target_position_id:
-        st.warning("Silakan pilih setidaknya satu karyawan benchmark manual atau satu posisi target.")
+run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
+
+# --- Area Hasil ---
+if run_button:
+    filters = {
+        "position_id": filter_position_id if filter_position_id != "(Semua)" else None,
+        "department_id": filter_department_id if filter_department_id != "(Semua)" else None,
+        "division_id": filter_division_id if filter_division_id != "(Semua)" else None,
+        "grade_id": filter_grade_id if filter_grade_id != "(Semua)" else None,
+    }
+
+    # Hapus filter yang tidak dipilih
+    filters = {k: v for k, v in filters.items() if v is not None}
+
+    mode_a_active = len(manual_ids) > 0
+    # Periksa apakah ada filter aktif
+    has_active_filters = (filter_position_id is not None or filter_department_id is not None or
+                          filter_division_id is not None or filter_grade_id is not None)
+
+    # Jika tidak ada filter aktif (semua None), tetap dianggap mode_b_active True untuk menampilkan semua karyawan dengan rating
+    mode_b_active = has_active_filters or (not mode_a_active and not has_active_filters)
+
+    if not manual_ids and not mode_b_active:
+        st.warning("Harap tentukan karyawan (Mode A) atau pilih setidaknya satu filter (Mode B).")
     else:
-        with st.spinner("Menjalankan algoritma Talent Matching... Ini mungkin memakan waktu beberapa saat."):
-            try:
-                result_df = run_match_query(
-                    engine,
-                    manual_ids=manual_ids,
-                    target_position_id=target_position_id,
-                    min_rating=min_rating
-                )
+        # Mode A saja: Menampilkan kecocokan karyawan terpilih terhadap berbagai posisi
+        # Kita akan menghitung kecocokan karyawan yang dipilih terhadap benchmark dari setiap posisi
+        if mode_a_active and not has_active_filters:
+            st.success(f"Memproses kecocokan untuk {len(manual_ids)} karyawan terpilih...")
+            all_results = []
 
-                st.success("Perhitungan Talent Matching selesai!")
-                st.subheader("📊 Peringkat Talenta")
-                st.dataframe(result_df, use_container_width=True)
+            with st.spinner("Menghitung kecocokan terhadap berbagai posisi..."):
+                # Untuk setiap posisi, hitung kecocokan karyawan terpilih terhadap benchmark posisi tersebut
+                for _, pos_row in positions_df.iterrows():
+                    try:
+                        # Jalankan query untuk mencari kecocokan terhadap benchmark dari posisi ini
+                        temp_result = run_match_query(
+                            engine,
+                            manual_ids=manual_ids,  # Karyawan yang ingin kita evaluasi kecocokannya
+                            target_position_id=pos_row['position_id'],  # Benchmark dari posisi ini
+                            min_rating=min_rating,
+                            filters={}  # Tidak ada filter tambahan
+                        )
 
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat menjalankan query: {e}")
+                        # Tambahkan informasi posisi ke hasil sebelum dimasukkan ke list
+                        if not temp_result.empty:
+                            temp_result = temp_result.copy()
+                            temp_result['benchmark_position'] = pos_row['name']  # Tambahkan nama posisi sebagai kolom baru
+                            all_results.append(temp_result)
+                    except Exception:
+                        # Lewati jika terjadi error untuk posisi tertentu
+                        continue
+
+            # Gabungkan semua hasil
+            if all_results:
+                final_result_df = pd.concat(all_results, ignore_index=True)
+
+                # Hanya tampilkan hasil untuk karyawan yang dicari di Mode A
+                final_result_df = final_result_df[final_result_df['employee_id'].isin(manual_ids)]
+
+                # Urutkan berdasarkan employee_id dan final_match_rate (dari tinggi ke rendah)
+                final_result_df = final_result_df.sort_values(['employee_id', 'final_match_rate'], ascending=[True, False])
+
+                st.success(f"Perhitungan selesai! Ditemukan kecocokan untuk {len(final_result_df)} posisi.")
+                st.subheader("📊 Rekomendasi Posisi untuk Karyawan Terpilih")
+
+                # Tampilkan hasil dengan kolom benchmark_position
+                st.dataframe(final_result_df, use_container_width=True)
+
+                # Tambahkan informasi tambahan
+                st.info("Angka `final_match_rate` menunjukkan seberapa cocok karyawan terhadap posisi tersebut. Semakin tinggi nilainya, semakin cocok.")
+            else:
+                st.warning("Tidak ditemukan hasil untuk karyawan yang dipilih.")
+        elif not mode_a_active and not has_active_filters:
+            # Mode B saja tanpa filter aktif - tampilkan semua karyawan sesuai rating
+            with st.spinner("Menjalankan algoritma Talent Matching..."):
+                try:
+                    result_df = run_match_query(
+                        engine,
+                        manual_ids=None,
+                        target_position_id=None,
+                        min_rating=min_rating,
+                        filters={}
+                    )
+                    st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} karyawan.")
+                    st.subheader("📊 Peringkat Kecocokan Talenta")
+                    st.dataframe(result_df, use_container_width=True)
+                except Exception as e:
+                    st.error("Terjadi kesalahan saat menjalankan query.")
+                    st.exception(e)
+        else:
+            # Mode B saja atau Mode A+B
+            with st.spinner("Menjalankan algoritma Talent Matching..."):
+                try:
+                    result_df = run_match_query(
+                        engine,
+                        manual_ids=manual_ids if manual_ids else None,
+                        target_position_id=None,
+                        min_rating=min_rating,
+                        filters=filters
+                    )
+
+                    # Jika mode A+B (Mode A+B aktif), hanya tampilkan karyawan dari Mode A
+                    if mode_a_active and has_active_filters:
+                        result_df = result_df[result_df['employee_id'].isin(manual_ids)]
+
+                    st.success(f"Perhitungan selesai! Ditemukan {len(result_df)} kandidat yang cocok.")
+                    st.subheader("📊 Peringkat Kecocokan Talenta")
+                    st.dataframe(result_df, use_container_width=True)
+                except Exception as e:
+                    st.error("Terjadi kesalahan saat menjalankan query.")
+                    st.exception(e)
 else:
-    st.info("Atur parameter benchmark di sidebar kiri, lalu klik **Jalankan Talent Match**.")
+    st.info("Atur Mode A atau Mode B di atas, lalu klik 'Jalankan Talent Match'.")

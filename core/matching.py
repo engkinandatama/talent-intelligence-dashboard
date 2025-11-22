@@ -1,85 +1,87 @@
-# pages/1_Talent_Matching.py
+# core/matching.py
 
-import streamlit as st
 import pandas as pd
-from core.db import get_engine
+from sqlalchemy import text
 
-st.set_page_config(page_title="Talent Matching", page_icon="🎯", layout="wide")
-
-st.title("🎯 Talent Matching Engine")
-st.caption("Temukan talenta internal terbaik berdasarkan profil benchmark yang Anda tentukan.")
-
-engine = get_engine()
-
-# Fungsi untuk memuat data dropdown dari database
-@st.cache_data(ttl=3600)
-def load_dropdown_data():
-    with engine.connect() as conn:
-        positions = pd.read_sql("SELECT position_id, name FROM dim_positions ORDER BY name", conn)
-        employees = pd.read_sql("SELECT employee_id, fullname FROM employees ORDER BY fullname", conn)
-    return positions, employees
-
-try:
-    positions_df, employees_df = load_dropdown_data()
-except Exception as e:
-    st.error(f"Gagal memuat data untuk filter dari database: {e}")
-    st.stop()
-
-# --- Panel Filter di Halaman Utama ---
-with st.expander("⚙️ Buka Panel Pengaturan Benchmark & Filter", expanded=True):
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Mode A: Benchmark Manual")
-        manual_selection = st.multiselect(
-            "Pilih Karyawan Benchmark",
-            options=[f"{row.employee_id} — {row.fullname}" for _, row in employees_df.iterrows()],
-            help="Pilih 1-5 karyawan untuk dijadikan tolak ukur manual."
-        )
-        manual_ids = [item.split(" — ")[0] for item in manual_selection]
-
-    with col2:
-        st.subheader("Mode B: Benchmark Berdasarkan Posisi")
-        position_name_map = dict(zip(positions_df['name'], positions_df['position_id']))
-        selected_position_name = st.selectbox(
-            "Pilih Posisi Target",
-            options=["(Tidak ada)"] + list(position_name_map.keys()),
-            help="Sistem akan otomatis menggunakan semua high-performer dari posisi ini sebagai benchmark."
-        )
-        target_position_id = position_name_map.get(selected_position_name)
-
-    min_rating = st.slider(
-        "Rating Minimum 'High Performer'",
-        min_value=1, max_value=5, value=5,
-        help="Hanya karyawan dengan rating ini atau lebih tinggi yang akan dipertimbangkan dalam benchmark otomatis."
-    )
-    
-    st.info("Anda bisa menggunakan Mode A, Mode B, atau keduanya secara bersamaan.")
-
-# --- Tombol Eksekusi ---
-run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
-
-# --- Area Hasil ---
-if run_button:
-    if not manual_ids and not target_position_id:
-        st.warning("Silakan pilih setidaknya satu karyawan benchmark manual atau satu posisi target.")
+def run_match_query(engine, manual_ids=None, target_position_id=None, min_rating=5,
+                   filters=None, search_name=None):
+    """
+    Menjalankan pipeline SQL Talent Matching lengkap dengan dukungan filter tambahan.
+    """
+    # --- Menyiapkan Parameter Benchmark ---
+    if manual_ids:
+        manual_array_sql = "ARRAY[" + ",".join(f"'{eid.strip()}'" for eid in manual_ids) + "]::text[]"
     else:
-        with st.spinner("Menjalankan algoritma Talent Matching... Ini mungkin memakan waktu beberapa saat."):
-            try:
-                result_df = run_match_query(
-                    engine,
-                    manual_ids=manual_ids,
-                    target_position_id=target_position_id,
-                    min_rating=min_rating
-                )
+        manual_array_sql = "ARRAY[]::text[]"
 
-                st.success("Perhitungan Talent Matching selesai!")
-                st.subheader("📊 Peringkat Talenta")
-                st.dataframe(result_df, use_container_width=True)
+    role_sql = "NULL" if not target_position_id else str(int(target_position_id))
 
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat menjalankan query. Pastikan semua input benar.")
-                st.exception(e) # Tampilkan detail error untuk debugging
-else:
-    st.info("Atur parameter di panel filter di atas, lalu klik **Jalankan Talent Match**.")
+    # --- Menyiapkan Parameter Filter Tambahan ---
+    filter_conditions = []
+    params = {'min_hp_rating': int(min_rating)}
+    if filters:
+        for key, value in filters.items():
+            if value is not None:
+                condition = f"e.{key} = :{key}"
+                filter_conditions.append(condition)
+                params[key] = value
+    
+    filter_clause = ""
+    if filter_conditions:
+        filter_clause = "WHERE " + " AND ".join(filter_conditions)
 
+    if search_name:
+        if filter_conditions:
+            filter_clause += " AND e.fullname ILIKE :search_name"
+        else:
+            filter_clause = "WHERE e.fullname ILIKE :search_name"
+        params['search_name'] = f"%{search_name}%"
+
+    # --- SQL Engine Lengkap ---
+    sql = f"""
+    WITH params AS (
+        SELECT 
+            {manual_array_sql} AS manual_hp,
+            {role_sql}::int AS role_position_id,
+            :min_hp_rating AS min_hp_rating
+    ),
+    manual_set AS (SELECT unnest(manual_hp) AS employee_id FROM params),
+    role_set AS (SELECT DISTINCT e.employee_id FROM employees e JOIN performance_yearly py USING(employee_id) JOIN params p ON TRUE WHERE py.rating >= p.min_hp_rating AND p.role_position_id IS NOT NULL AND e.position_id = p.role_position_id),
+    benchmark_set AS (SELECT employee_id FROM manual_set UNION SELECT employee_id FROM role_set),
+    fallback_benchmark AS (SELECT py.employee_id FROM performance_yearly py JOIN params p ON TRUE WHERE py.rating >= p.min_hp_rating),
+    final_bench AS (SELECT DISTINCT employee_id FROM benchmark_set UNION SELECT DISTINCT employee_id FROM fallback_benchmark WHERE NOT EXISTS (SELECT 1 FROM benchmark_set)),
+    latest AS (SELECT (SELECT MAX(year) FROM competencies_yearly) AS comp_year),
+    baseline_numeric AS (SELECT tv_name, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) AS baseline_score FROM (SELECT c.pillar_code AS tv_name, c.score::numeric AS score FROM competencies_yearly c JOIN latest l ON c.year = l.comp_year WHERE c.employee_id IN (SELECT employee_id FROM final_bench) UNION ALL SELECT 'iq', p.iq::numeric FROM profiles_psych p WHERE p.employee_id IN (SELECT employee_id FROM final_bench) UNION ALL SELECT 'gtq', p.gtq::numeric FROM profiles_psych p WHERE p.employee_id IN (SELECT employee_id FROM final_bench) UNION ALL SELECT 'tiki', p.tiki::numeric FROM profiles_psych p WHERE p.employee_id IN (SELECT employee_id FROM final_bench) UNION ALL SELECT 'faxtor', p.faxtor::numeric FROM profiles_psych p WHERE p.employee_id IN (SELECT employee_id FROM final_bench) UNION ALL SELECT 'pauli', p.pauli::numeric FROM profiles_psych p WHERE p.employee_id IN (SELECT employee_id FROM final_bench)) x GROUP BY tv_name),
+    all_numeric_scores AS (SELECT employee_id, pillar_code AS tv_name, score::numeric AS user_score FROM competencies_yearly JOIN latest l ON competencies_yearly.year = l.comp_year UNION ALL SELECT employee_id, 'iq', iq::numeric FROM profiles_psych UNION ALL SELECT employee_id, 'gtq', gtq::numeric FROM profiles_psych UNION ALL SELECT employee_id, 'tiki', tiki::numeric FROM profiles_psych UNION ALL SELECT employee_id, 'faxtor', faxtor::numeric FROM profiles_psych UNION ALL SELECT employee_id, 'pauli', pauli::numeric FROM profiles_psych),
+    numeric_tv AS (SELECT sc.employee_id, bn.tv_name, bn.baseline_score, sc.user_score, (sc.user_score / NULLIF(bn.baseline_score,0)) * 100 AS tv_match_rate FROM all_numeric_scores sc JOIN baseline_numeric bn USING(tv_name)),
+    reverse_list AS (SELECT UNNEST(ARRAY['Papi_I','Papi_K','Papi_Z','Papi_T']) AS scale_code),
+    baseline_papi AS (SELECT ps.scale_code AS tv_name, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ps.score) AS baseline_score, (rl.scale_code IS NOT NULL) AS is_reverse FROM papi_scores ps JOIN final_bench fb USING(employee_id) LEFT JOIN reverse_list rl ON ps.scale_code = rl.scale_code GROUP BY ps.scale_code, rl.scale_code),
+    papi_tv AS (SELECT ps.employee_id, bp.tv_name, bp.baseline_score, ps.score::numeric AS user_score, CASE WHEN bp.is_reverse THEN ((2 * bp.baseline_score - ps.score::numeric) / NULLIF(bp.baseline_score,0)) * 100 ELSE (ps.score::numeric / NULLIF(bp.baseline_score,0)) * 100 END AS tv_match_rate FROM papi_scores ps JOIN baseline_papi bp ON ps.scale_code = bp.tv_name),
+    baseline_cat AS (SELECT 'mbti' AS tv_name, MODE() WITHIN GROUP (ORDER BY UPPER(TRIM(mbti))) AS baseline_value FROM profiles_psych p JOIN final_bench fb USING(employee_id) UNION ALL SELECT 'disc', MODE() WITHIN GROUP (ORDER BY UPPER(TRIM(disc))) FROM profiles_psych p JOIN final_bench fb USING(employee_id)),
+    categorical_tv AS (SELECT p.employee_id, bc.tv_name, 1 AS baseline_score, 1 AS user_score, CASE WHEN (bc.tv_name = 'mbti' AND UPPER(TRIM(p.mbti)) = bc.baseline_value) OR (bc.tv_name = 'disc' AND UPPER(TRIM(p.disc)) = bc.baseline_value) THEN 100 ELSE 0 END AS tv_match_rate FROM profiles_psych p CROSS JOIN baseline_cat bc),
+    all_tv AS (SELECT * FROM numeric_tv UNION ALL SELECT * FROM papi_tv UNION ALL SELECT * FROM categorical_tv),
+    tv_map AS (SELECT tv_name, tgv_name, tv_weight FROM talent_variables_mapping),
+    tgv_match AS (SELECT a.employee_id, m.tgv_name, SUM(a.tv_match_rate * m.tv_weight) / SUM(m.tv_weight) AS tgv_match_rate FROM all_tv a JOIN tv_map m USING(tv_name) GROUP BY a.employee_id, m.tgv_name),
+    final_match AS (SELECT employee_id, SUM(tgv_match_rate * g.tgv_weight) AS final_match_rate FROM tgv_match t JOIN talent_group_weights g USING(tgv_name) GROUP BY employee_id)
+    
+    SELECT 
+        e.employee_id, 
+        e.fullname,
+        pos.name as position_name,
+        dep.name as department_name,
+        div.name as division_name,
+        fm.final_match_rate
+    FROM final_match fm
+    JOIN employees e USING(employee_id)
+    LEFT JOIN dim_positions pos ON e.position_id = pos.position_id
+    LEFT JOIN dim_departments dep ON e.department_id = dep.department_id
+    LEFT JOIN dim_divisions div ON e.division_id = div.division_id
+    {filter_clause}
+    ORDER BY final_match_rate DESC
+    LIMIT 200;
+    """
+    
+    with engine.connect() as conn:
+        df = pd.read_sql(text(sql), conn, params=params)
+    
+    return df
