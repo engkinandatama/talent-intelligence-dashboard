@@ -112,6 +112,9 @@ Konsistensi membuat kode lebih mudah dibaca dan dipahami oleh semua orang.
 - Hapus kode yang tidak digunakan (kode yang di-komentar, fungsi lama, variabel sisa).
 - Gunakan *formatter* kode otomatis seperti **Black** atau **Ruff** untuk menjaga konsistensi format di seluruh proyek.
 
+### **Rule 3.4: Membuat Log Development**
+- Setiap telah selesai melakukan task, buatlah log singkat, padat, dan jelas. Tidak perlu sangat detail, tapi cukup jelas sehingga bisa memberikan insight yang jelas apa saja yang sudah dilakukan sebelumnya baik yang berhasil atau gagal sehingga menjadi pelajaran selanjutnya.
+- Buat log pada file docs\DEVELOPMENT_LOGS.md
 ---
 
 > Dokumen ini adalah hukum tertinggi dalam proyek ini. Setiap perubahan atau penambahan aturan harus didiskusikan dan disetujui. Dengan mematuhi panduan ini, kita memastikan produk akhir yang kita bangun tidak hanya fungsional, tetapi juga berkualitas tinggi, aman, dan profesional.
