@@ -1,92 +1,302 @@
-# 📖 Panduan Algoritma Talent Matching
+# 📘 **MATCHING_ALGORITHM.md (Toggle-Ready Version)**
 
-Dokumen ini menjelaskan secara rinci logika dan metodologi di balik **Talent Matching Engine**. Ini adalah "otak" dari aplikasi dan menjadi dasar untuk semua perhitungan skor kecocokan. Semua kontributor, termasuk AI, harus merujuk ke dokumen ini saat bekerja dengan `core/matching.py`.
-
-## 1. Filosofi Inti: Bukan Pencarian, Tapi Pencocokan
-
-Tujuan utama algoritma ini **bukan untuk memfilter** karyawan berdasarkan kriteria (seperti `department = 'IT'`). Tujuannya adalah untuk **menghitung skor kecocokan (match score)** setiap karyawan terhadap sebuah profil "karyawan teladan" (benchmark).
-
-Skor ini, yang disebut `final_match_rate`, merepresentasikan seberapa "mirip" seorang karyawan dengan profil sukses yang telah didefinisikan.
+**Talent Matching Engine — Matching Algorithm Specification**
+**Versi 3.1 — Benchmark-Driven Architecture + Manual Benchmark Toggle**
 
 ---
 
-## 2. Struktur Algoritma: Model Pembobotan Hierarkis 3 Tingkat
+# 1. 🎯 Tujuan Dokumen
 
-Algoritma ini menggunakan model penilaian hierarkis yang terdiri dari 3 level perhitungan.
+Dokumen ini mendefinisikan **logika resmi** algoritma Talent Matching Engine yang digunakan untuk menghitung:
 
-### **Level 3: `final_match_rate` (Skor Akhir)**
-Ini adalah skor paling atas yang dilihat pengguna.
+* baseline score
+* tv_match_rate
+* tgv_match_rate
+* final_match_rate
+* mode operasi engine (Mode A/B/Default) dengan Benchmark Toggle
 
-- **Rumus:** Rata-rata tertimbang (*weighted average*) dari semua skor TGV (Talent Group Variable).
-- **Formula Matematis:**
-  `Final Match Rate = Σ (Skor TGV * Bobot TGV)`
-- **Implementasi:**
-  - Skor TGV (`tgv_match_rate`) dihitung di level sebelumnya.
-  - Bobot TGV (`tgv_weight`) diambil dari tabel `public.talent_group_weights`.
-  - Perhitungan ini terjadi di CTE `final_match` dalam query SQL.
+Dokumen ini merupakan **sumber kebenaran utama (single source of truth)** bagi semua implementasi:
 
-### **Level 2: `tgv_match_rate` (Skor Grup Talenta)**
-Setiap TGV (misalnya, "Cognitive Ability", "Workstyle", "Competency") memiliki skornya sendiri.
+* UI logic
+* Python logic
+* SQL engine
+* Qwen Coder refactor
 
-- **Rumus:** Rata-rata tertimbang (*weighted average*) dari semua skor TV (Talent Variable) yang termasuk dalam grup tersebut.
-- **Formula Matematis:**
-  `Skor TGV = Σ (Skor TV * Bobot TV) / Σ (Bobot TV)`
-- **Implementasi:**
-  - Skor TV (`tv_match_rate`) dihitung di level paling dasar.
-  - Bobot TV (`tv_weight`) dan pemetaan TV ke TGV diambil dari tabel `public.talent_variables_mapping`.
-  - Perhitungan ini terjadi di CTE `tgv_match` dalam query SQL.
-
-### **Level 1: `tv_match_rate` (Skor Variabel Individual)**
-Ini adalah fondasi dari semua perhitungan, di mana skor setiap karyawan untuk satu variabel spesifik (misalnya, skor IQ, skor kompetensi FTC) dibandingkan dengan **skor baseline**.
-
-- **Definisi Skor Baseline:** Skor baseline adalah **median (persentil ke-50)** dari skor karyawan yang termasuk dalam **set benchmark**. Ini merepresentasikan "skor ideal" dari seorang *high performer*.
-
-Ada 3 jenis rumus di level ini:
-
-#### **1. Logika Numerik Standar**
-- **Untuk Variabel:** Kompetensi, skor kognitif (IQ, GTQ, Pauli), dan skor PAPI yang bersifat positif (semakin tinggi semakin baik).
-- **Rumus:** `Match Rate = (Skor Karyawan / Skor Baseline) * 100`
-- **Tujuan:** Mengukur seberapa dekat skor karyawan dengan skor ideal. Skor di atas 100 berarti melebihi ekspektasi.
-
-#### **2. Logika Numerik Terbalik (Inverse Scoring)**
-- **Untuk Variabel:** Skor PAPI yang bersifat negatif (semakin rendah semakin baik), seperti kecenderungan untuk impulsif atau terlalu agresif.
-- **Variabel Spesifik:** `Papi_I`, `Papi_K`, `Papi_Z`, `Papi_T`.
-- **Rumus:** `Match Rate = ((2 * Skor Baseline - Skor Karyawan) / Skor Baseline) * 100`
-- **Tujuan:** Memberikan skor tinggi kepada karyawan yang memiliki skor rendah pada sifat-sifat yang tidak diinginkan ini.
-
-#### **3. Logika Kategorikal (Boolean Match)**
-- **Untuk Variabel:** Data kualitatif seperti tipe kepribadian.
-- **Variabel Spesifik:** `mbti`, `disc`.
-- **Rumus:**
-  - `Match Rate = 100` jika tipe karyawan sama dengan tipe yang paling umum (*mode*) di antara set benchmark.
-  - `Match Rate = 0` jika berbeda.
-- **Tujuan:** Memberikan skor biner untuk kecocokan tipe.
+Semua kode **harus mengikuti** dokumen ini.
 
 ---
 
-## 3. Konsep Kunci: Definisi "Benchmark"
+# 2. 🧠 Konsep Fundamental: Benchmark = “Profil Karyawan Ideal”
 
-Algoritma ini sangat bergantung pada siapa yang dianggap sebagai "benchmark". Aplikasi ini mendukung dua mode utama untuk mendefinisikan benchmark:
+Talent Matching Engine menggunakan konsep:
 
-- **Mode A (Manual):** Pengguna memilih 1 atau lebih `employee_id` secara manual.
-- **Mode B (Berdasarkan Posisi):** Pengguna memilih sebuah `position_id`. Sistem secara otomatis akan mengambil semua karyawan di posisi tersebut yang memiliki `rating` di atas ambang batas (misalnya, `rating >= 5`).
+> **“Semua skor karyawan dihitung berdasarkan ideal baseline group (benchmark group).”**
 
-**Logika Gabungan:**
-- Jika pengguna memilih Mode A dan B, set benchmark adalah **gabungan (UNION)** dari kedua grup tersebut.
-- **Fallback:** Jika tidak ada benchmark yang dipilih, sistem akan secara default menggunakan semua karyawan di perusahaan dengan `rating` di atas ambang batas sebagai benchmark.
+Benchmark group adalah **sekumpulan karyawan berkinerja tinggi** yang dipilih berdasarkan input user.
+
+Dengan benchmark ini, engine menghitung:
+
+* skor median kompetensi
+* skor median kognitif
+* skor mode kepribadian
+
+Untuk menghasilkan baseline ideal, lalu membandingkannya dengan seluruh karyawan.
 
 ---
 
-## 4. Alur Eksekusi Query SQL (`run_match_query`)
+# 3. 🌙 Mode Operasi Engine (Dengan Benchmark Toggle)
 
-Fungsi ini harus mengikuti alur berikut:
+Engine sekarang mendukung **tiga mode resmi** dan bekerja dengan *satu boolean baru*:
+**`use_manual_as_benchmark (toggle)`**
 
-1.  **Membangun Set Benchmark:** Membuat CTE `final_bench` yang berisi daftar `employee_id` yang menjadi tolak ukur.
-2.  **Menghitung Baseline:** Membuat CTE `baseline_numeric`, `baseline_papi`, dan `baseline_cat` untuk menghitung skor median (atau mode) dari set benchmark untuk setiap TV.
-3.  **Menghitung Skor TV:** Membuat CTE `numeric_tv`, `papi_tv`, dan `categorical_tv` untuk menghitung `tv_match_rate` bagi **semua karyawan** dengan membandingkannya dengan skor baseline.
-4.  **Menggabungkan Skor TV:** Menggunakan `UNION ALL` untuk menggabungkan semua skor TV ke dalam satu CTE besar (`all_tv`).
-5.  **Menghitung Skor TGV:** Menggunakan `GROUP BY` dan `JOIN` dengan tabel `talent_variables_mapping` untuk menghitung `tgv_match_rate`.
-6.  **Menghitung Skor Final:** Menggunakan `GROUP BY` dan `JOIN` dengan tabel `talent_group_weights` untuk menghitung `final_match_rate`.
-7.  **Menyajikan Hasil:** Menggabungkan hasil akhir dengan tabel `employees` dan `dim_` untuk menampilkan informasi lengkap, menerapkan filter kandidat (jika ada), dan mengurutkannya.
+Berikut mode-mode final:
 
-Dengan mengikuti panduan ini, AI akan mengerti bahwa setiap permintaan modifikasi kode harus selaras dengan arsitektur algoritma yang kompleks ini, bukan sekadar membuat query `SELECT` biasa.
+---
+
+## 🟦 **Mode A — Manual Selection (Toggle OFF)**
+
+**Tujuan:**
+
+> Menghasilkan **rekomendasi posisi** untuk satu/multiple karyawan tertentu.
+
+**Kondisi UI:**
+
+* manual_ids terisi
+* toggle = OFF
+* filter B nonaktif (disabled)
+
+**Benchmark:** Tidak digunakan
+**Fungsi SQL:** Tidak digunakan
+
+**Output:**
+
+* Untuk setiap employee_id → tampilkan ranking posisi terbaik
+* Menggunakan fungsi:
+
+  ```
+  get_match_for_single_person(employee_id)
+  ```
+
+---
+
+## 🟩 **Mode A — Manual Benchmark (Toggle ON)**
+
+**Tujuan:**
+
+> Menjadikan manual_ids sebagai benchmark ideal dan menampilkan ranking semua karyawan.
+
+**Kondisi UI:**
+
+* manual_ids terisi
+* toggle = ON
+* filter B nonaktif (disabled)
+
+**Benchmark:**
+
+```
+final_bench = manual_ids
+```
+
+**SQL digunakan:**
+
+```
+run_standard_match_query(manual_ids_for_benchmark = manual_ids)
+```
+
+**Output:**
+Ranking seluruh karyawan berdasarkan kesesuaian terhadap baseline manual.
+
+---
+
+## 🟧 **Mode B — Filter-Based Benchmark**
+
+**Tujuan:**
+
+> Menentukan benchmark group berdasarkan filter kriteria high performer.
+
+**Kondisi UI:**
+
+* manual_ids kosong
+* toggle irrelevant
+* filter B aktif (posisi, departemen, divisi, grade, dll.)
+
+**Benchmark builder:**
+
+```
+final_bench = high performers (rating>=5) yang memenuhi semua filter B
+```
+
+**Output:**
+Ranking seluruh karyawan berdasarkan baseline yang dihasilkan filter B.
+
+---
+
+## ⚫ **Default Mode**
+
+**Kondisi UI:**
+
+* manual_ids kosong
+* filter B kosong
+* toggle irrelevant
+
+**Benchmark builder:**
+
+```
+final_bench = semua high performer rating >= 5
+```
+
+**Output:**
+Ranking seluruh karyawan menggunakan baseline default.
+
+---
+
+# 4. 🧱 Blueprint Mode Table
+
+| Mode                                 | manual_ids | toggle | filter B | Benchmark       | Output                       |
+| ------------------------------------ | ---------- | ------ | -------- | --------------- | ---------------------------- |
+| **Mode A – Position Recommendation** | ✔ ada      | OFF    | disabled | none            | rekomendasi posisi per orang |
+| **Mode A – Manual Benchmark**        | ✔ ada      | ON     | disabled | manual_ids      | ranking seluruh karyawan     |
+| **Mode B – Filter Benchmark**        | kosong     | OFF    | aktif    | HP via filter B | ranking seluruh karyawan     |
+| **Default Mode**                     | kosong     | OFF    | kosong   | HP rating=5     | ranking seluruh karyawan     |
+
+---
+
+# 5. 🧩 Struktur Skoring (Hierarki 3 Level)
+
+Scoring engine masih sama seperti versi sebelumnya.
+Tidak ada perubahan pada rumus inti.
+
+## 🟪 Level 1 — tv_match_rate
+
+Bandingkan skor masing-masing variabel (TV) dengan baseline ideal.
+
+### (A) Variabel Numerik Normal
+
+Contoh: Kompetensi, IQ, GTQ, Pauli
+
+```
+tv_match_rate = (user_score / baseline_score) * 100
+```
+
+### (B) Variabel Numerik Terbalik (Reverse Scoring)
+
+Contoh: PAPI I, K, Z, T
+
+```
+tv_match_rate = ((2 * baseline_score - user_score) / baseline_score) * 100
+```
+
+### (C) Variabel Kategorikal (MBTI, DISC)
+
+```
+match   → 100  
+not match → 0
+```
+
+---
+
+## 🟥 Level 2 — tgv_match_rate (Weighted Average)
+
+Menggunakan `talent_variables_mapping`.
+
+```
+tgv_match_rate = SUM(tv_match_rate * tv_weight) / SUM(tv_weight)
+```
+
+---
+
+## 🟦 Level 3 — final_match_rate (Weighted Sum)
+
+Menggunakan `talent_group_weights`.
+
+```
+final_match_rate = SUM(tgv_match_rate * tgv_weight)
+```
+
+---
+
+# 6. 🧬 Definisi Benchmark Final
+
+Urutan penentuan benchmark:
+
+### 1. Jika **manual_ids** dan **toggle ON**
+
+→ final_bench = manual_ids (Mode A Benchmark)
+
+### 2. Else jika filter B aktif
+
+→ final_bench = HP rating>=5 yang cocok filter B (Mode B Benchmark)
+
+### 3. Else (no inputs)
+
+→ final_bench = HP rating>=5 (Default Benchmark)
+
+---
+
+# 7. 🔗 Hubungan Dengan SQL Engine
+
+Matching algorithm ini diimplementasikan oleh SQL engine dengan pipeline CTE:
+
+```
+params
+manual_set
+filter_based_set
+fallback_benchmark
+final_bench
+latest
+baseline_numeric
+baseline_papi
+baseline_cat
+all_numeric_scores
+numeric_tv
+papi_tv
+categorical_tv
+all_tv
+tgv_match
+final_match
+final_results
+```
+
+Aturan penting:
+
+### ✔ SQL engine hanya dipanggil pada Mode A Benchmark, Mode B, dan Default
+
+### ✔ SQL engine tidak dipanggil pada Mode A Recommendation
+
+### ✔ Tidak ada filter kandidat dalam SQL final SELECT
+
+---
+
+# 8. 📌 Aturan Teknis yang Tidak Boleh Dilanggar
+
+### ❌ 1. Tidak ada “Mode A+B” lagi
+
+Sudah sepenuhnya digantikan toggle.
+
+### ❌ 2. Filter B tidak boleh aktif atau digunakan ketika manual_ids ada
+
+Toggle menjamin ini.
+
+### ❌ 3. SQL final SELECT tidak boleh mengandung filter apapun
+
+Sort/filter output dilakukan di Streamlit saja.
+
+### ✔ 4. Baseline harus selalu berasal dari final_bench
+
+Tidak boleh dari tempat lain.
+
+### ✔ 5. Fallback baseline (HP rating>=5) wajib ada
+
+Untuk memastikan baseline tidak kosong.
+
+---
+
+# 9. 🏁 Penutup
+
+Dokumen ini menetapkan **desain final** algoritma Talent Matching Engine versi terbaru berbasis toggle-ready architecture.
+Semua implementasi dan refactor di Python & SQL harus selaras dengan dokumen ini.
+
+Jika terdapat perbedaan antara kode dan dokumen ini:
+**Dokumen ini adalah referensi yang benar.**
+
+---

@@ -1,103 +1,305 @@
-# Project Overview: Talent Match Intelligence Dashboard (Ultimate Edition)
+# 📘 **Project Overview — Talent Match Intelligence Dashboard**
 
-## 1. Visi & Tujuan Utama Aplikasi
-
-Aplikasi ini adalah sebuah **Platform Intelijen Talenta (Talent Intelligence Platform)** yang komprehensif, dibangun menggunakan Streamlit dengan arsitektur modular. Tujuannya adalah menyediakan alat bantu strategis bagi para pemimpin dan manajer HR untuk semua siklus manajemen talenta internal, mulai dari perencanaan peran hingga penempatan dan pengembangan karyawan.
-
-**Fungsi Inti Platform:**
-1.  **Perencanaan Peran (Role Planning):** Membantu mendefinisikan peran dan kebutuhan kompetensi menggunakan bantuan AI.
-2.  **Pencocokan Talenta (Talent Matching):** Menemukan dan me-ranking talenta internal yang paling cocok untuk sebuah peran.
-3.  **Eksplorasi Talenta (Talent Exploration):** Menyediakan database karyawan yang mudah dicari dan dianalisis.
-4.  **Analisis Mendalam (Deep Dive Analysis):** Menawarkan profil 360 derajat dari setiap karyawan.
-5.  **Wawasan Strategis (Strategic Insights):** Memberikan gambaran umum tentang kekuatan dan kelemahan talenta di seluruh organisasi.
+**Versi 3.1 — Benchmark-Driven Architecture (Toggle-Ready Edition)**
 
 ---
 
-## 2. Arsitektur & Struktur Halaman (9 Modul Utama)
+# 1. 🎯 Visi & Tujuan Utama
 
-Aplikasi ini akan terdiri dari 9 modul utama, yang diimplementasikan sebagai halaman terpisah dalam aplikasi multi-halaman Streamlit.
+Talent Match Intelligence Dashboard adalah sebuah **Platform Intelijen Talenta internal** yang dirancang untuk:
 
-### **Modul 1: `Home Dashboard` (Halaman Utama)**
-- **Tujuan:** Memberikan pandangan "mata burung" (bird's-eye view) tentang kondisi talenta organisasi.
-- **Fitur:**
-    -   Kartu metrik utama (Total Karyawan, Rata-rata Kinerja, Jumlah High Performer).
-    -   Grafik distribusi rating kinerja dan sebaran kompetensi.
-    -   Pintasan cepat ke modul-modul lain.
+* Mengidentifikasi talenta terbaik dalam organisasi
+* Membandingkan karyawan dengan profil *high performer* ideal
+* Menghasilkan rekomendasi posisi optimal
+* Mempercepat proses talent review & succession planning
+* Menstandarkan keputusan HR berbasis data
 
-### **Modul 2: `Job Role Generator (AI)`**
-- **Tujuan:** Mengotomatiskan pembuatan profil pekerjaan (Job Profile).
-- **Fitur:**
-    -   Form input untuk `Role Name` dan `Job Level`.
-    -   Tombol "Generate with AI" yang memanggil LLM.
-    -   AI akan menghasilkan: Tujuan Peran, Tanggung Jawab Utama, Kualifikasi, dan Kompetensi Inti.
-    -   Hasil dapat disimpan atau di-copy.
-
-### **Modul 3: `Talent Matching Engine` (Mesin Pencocokan)**
-- **Tujuan:** **MODUL INTI.** Menjalankan algoritma untuk me-ranking kandidat berdasarkan skor kecocokan.
-- **Fitur:**
-    -   Panel **Benchmark** (Mode A: Manual, Mode B: Berdasarkan Posisi).
-    -   Panel **Filter Kandidat** (opsional, untuk menyaring hasil akhir).
-    -   Tombol "Jalankan Talent Match".
-    -   Tabel hasil peringkat berdasarkan `final_match_rate`.
-
-### **Modul 4: `Employee Explorer` (Eksplorasi Karyawan)**
-- **Tujuan:** Menyediakan antarmuka seperti HRIS untuk mencari dan memfilter semua karyawan.
-- **Fitur:**
-    -   Panel filter lengkap (posisi, departemen, divisi, dll.).
-    -   Tabel besar dengan **pagination** untuk menampilkan ribuan data.
-    -   Setiap nama karyawan adalah **hyperlink** ke halaman profil detail.
-
-### **Modul 5: `Employee Detail Page` (Profil Detail Karyawan)**
-- **Tujuan:** Menampilkan profil 360 derajat dari satu karyawan.
-- **Akses:** Halaman dinamis yang diakses melalui hyperlink dari modul lain (URL dengan parameter `?employee_id=...`).
-- **Konten:**
-    -   Info pribadi dan posisi.
-    -   Grafik tren kinerja.
-    -   **Radar Chart** kompetensi.
-    -   "Kartu Statistik" untuk data psikometri (IQ, MBTI, DISC).
-    -   Daftar kekuatan (CliftonStrengths).
-
-### **Modul 6: `Role Benchmarking` (Analisis Peran)**
-- **Tujuan:** Membandingkan profil ideal sebuah peran dengan kandidat potensial.
-- **Fitur:**
-    -   Pilih sebuah peran yang sudah didefinisikan.
-    -   Sistem menampilkan profil kompetensi dan perilaku ideal untuk peran tersebut.
-    -   Membandingkan beberapa kandidat secara berdampingan (side-by-side) dengan profil ideal.
-    -   Menampilkan **analisis kesenjangan (gap analysis)**.
-
-### **Modul 7: `Insights & Analytics` (Dasbor Analitik)**
-- **Tujuan:** Memberikan wawasan strategis dari data agregat.
-- **Fitur:**
-    -   **Heatmap** kompetensi di seluruh departemen.
-    -   Distribusi tipe kepribadian (MBTI/DISC) di seluruh perusahaan.
-    -   Analisis korelasi antara masa kerja, rating, dan skor kompetensi.
-
-### **Modul 8: `Settings / Admin` (Pengaturan)**
-- **Tujuan:** Mengelola konfigurasi aplikasi.
-- **Fitur:**
-    -   Mengubah bobot TGV dan TV untuk algoritma matching.
-    -   Mengelola koneksi database.
-    -   Pengaturan tema (Light/Dark mode).
-
-### **Modul 9: `Authentication` (Otentikasi)**
-- **Tujuan:** Membatasi akses hanya untuk pengguna yang berwenang.
-- **Fitur:**
-    -   Halaman login sederhana (misalnya, menggunakan kata sandi tunggal atau daftar pengguna yang diizinkan).
-    -   Ini adalah lapisan keamanan dasar, bukan sistem RBAC (Role-Based Access Control) yang kompleks.
+Aplikasi ini dibangun dengan arsitektur modular menggunakan **Streamlit**, **PostgreSQL**, dan **SQL-based Talent Matching Engine**.
 
 ---
 
-## 3. Logika Inti di Balik Layar (`core/matching.py`)
+# 2. 🏗 Arsitektur Utama Aplikasi
 
-Logika `run_match_query` tetap menjadi pusat dari aplikasi ini. Fungsi ini akan dipanggil terutama oleh **Modul 3 (Talent Matching Engine)** dan **Modul 6 (Role Benchmarking)**. Logikanya tetap sama: membangun satu query SQL besar untuk menghitung `final_match_rate` berdasarkan sistem pembobotan hierarkis 3 tingkat (TV -> TGV -> Final Score).
+Aplikasi terdiri dari 9 modul utama, yang saling terintegrasi namun tetap modular:
 
-1.  **`params`**: Mengambil input dari UI (benchmark manual, posisi target, rating min).
-2.  **`final_bench`**: Menentukan set `employee_id` yang akan menjadi benchmark.
-3.  **`baseline_numeric`, `baseline_papi`, `baseline_cat`**: Menghitung **skor baseline (median)** untuk setiap variabel (TV) dari karyawan di dalam `final_bench`.
-4.  **`numeric_tv`, `papi_tv`, `categorical_tv`**: Menghitung **`tv_match_rate`** untuk setiap karyawan di seluruh perusahaan dengan membandingkan skor mereka dengan skor baseline. Di sinilah logika *inverse scoring* dan *boolean match* diterapkan.
-5.  **`all_tv`**: Menggabungkan semua hasil `tv_match_rate` menjadi satu tabel besar.
-6.  **`tgv_match`**: Melakukan agregasi (rata-rata tertimbang) dari `tv_match_rate` menjadi `tgv_match_rate` berdasarkan bobot di tabel `talent_variables_mapping`.
-7.  **`final_match`**: Melakukan agregasi akhir dari `tgv_match_rate` menjadi `final_match_rate` berdasarkan bobot di tabel `talent_group_weights`.
-8.  **Query Terakhir**: Menggabungkan hasil `final_match` dengan tabel `employees` dan `dim_` lainnya untuk menampilkan informasi lengkap, lalu menerapkan filter kandidat (jika ada), dan mengurutkannya berdasarkan `final_match_rate` tertinggi.
+---
 
-**Penting:** Filter kandidat (departemen, nama, dll.) diterapkan di **klausa `WHERE` paling akhir**, setelah semua skor `final_match_rate` dihitung. Filter ini tidak boleh mempengaruhi perhitungan benchmark atau baseline.
+## **1. Home Dashboard**
+
+Menampilkan metrik utama organisasi:
+
+* Jumlah karyawan
+* Distribusi rating
+* Distribusi kompetensi
+* Insight singkat kondisi talenta
+
+---
+
+## **2. Job Role Generator (AI-Assisted)**
+
+Menghasilkan profil pekerjaan otomatis menggunakan LLM:
+
+* Role purpose
+* Key responsibilities
+* Qualification
+* Required competencies
+* Dapat disimpan ke database
+
+---
+
+## **3. Talent Matching Engine (Inti Sistem)**
+
+**Modul paling penting.**
+
+Fungsi:
+
+* Menjalankan algoritma *Talent Matching* terhadap seluruh karyawan
+* Menghasilkan ranking kandidat berdasarkan **final_match_rate**
+* Membangun benchmark otomatis dengan pendekatan **toggle-based baseline logic**
+
+### Mode Operasi Engine:
+
+| Mode                                              | Kapan digunakan?               | Output                                            |
+| ------------------------------------------------- | ------------------------------ | ------------------------------------------------- |
+| **Mode A — Position Recommendation** (toggle OFF) | User memilih manual_ids        | Rekomendasi posisi untuk orang tersebut           |
+| **Mode A — Manual Benchmark** (toggle ON)         | User memilih manual_ids        | Ranking seluruh karyawan terhadap baseline manual |
+| **Mode B — Filter Benchmark**                     | Manual kosong, filter UI aktif | Ranking seluruh karyawan terhadap baseline filter |
+| **Default Mode**                                  | Tidak ada input                | Baseline = HP rating≥5, ranking seluruh karyawan  |
+
+---
+
+## **4. Employee Explorer**
+
+Seperti mini-HRIS internal:
+
+* Cari karyawan berdasarkan banyak kriteria
+* Tabel interaktif dengan sorting & filtering
+* Hyperlink ke detail profile
+
+---
+
+## **5. Employee Profile (360° View)**
+
+Profil mendalam untuk setiap karyawan:
+
+* Informasi personal & organisasi
+* Grafik tren kinerja
+* Radar chart kompetensi
+* IQ, GTQ, MBTI, DISC
+* CliftonStrengths
+* Riwayat jabatan (jika tersedia)
+
+---
+
+## **6. Role Benchmarking**
+
+Bandingkan peran terhadap beberapa kandidat:
+
+* Profile ideal role
+* Gap analysis per kandidat
+* Radar chart perbandingan
+* Insight kekuatan & kelemahan
+
+---
+
+## **7. Insights & Analytics**
+
+Analisis makro organisasi:
+
+* Heatmap kompetensi
+* Distribusi kepribadian
+* Analisis korelasi rating–masa kerja–kompetensi
+* Strength clusters per departemen
+
+---
+
+## **8. Settings / Admin**
+
+Konfigurasi dan pengaturan:
+
+* Bobot TGV / TV
+* Pengaturan koneksi database
+* Theme mode (light/dark)
+
+---
+
+## **9. Authentication**
+
+Layer otentikasi sederhana:
+
+* Login berbasis password
+* Proteksi halaman sensitif
+
+---
+
+# 3. 🧠 Arsitektur Logika Talent Matching (versi Toggle-Ready)
+
+Aplikasi ini menggunakan **model matematika 3-level hierarkis**:
+
+### **Level 1 — Talent Variable Match Rate (TV)**
+
+Dihitung dari baseline:
+
+* numeric → `(user_score / baseline_score) * 100`
+* reverse numeric → `((2 * baseline_score - user_score)/baseline_score)*100`
+* categorical → `100 if match else 0`
+
+---
+
+### **Level 2 — Talent Group Variable (TGV)**
+
+Weighted average:
+
+```
+SUM(tv_match_rate * tv_weight) / SUM(tv_weight)
+```
+
+---
+
+### **Level 3 — Final Match Rate**
+
+Weighted sum:
+
+```
+SUM(tgv_match_rate * tgv_weight)
+```
+
+---
+
+# 4. 🌐 Arsitektur Benchmark-Driven (Versi Toggle)
+
+### **Mode A — toggle OFF**
+
+Tidak menggunakan SQL engine.
+Engine memakai fungsi alternatif:
+
+```
+get_match_for_single_person()
+```
+
+Menampilkan rekomendasi posisi untuk orang tersebut.
+
+---
+
+### **Mode A — toggle ON**
+
+Benchmark = manual_ids
+Filter B otomatis nonaktif.
+
+---
+
+### **Mode B**
+
+Filter B aktif → benchmark dibangun dari high performer sesuai filter.
+
+---
+
+### **Default Mode**
+
+Baseline = HP rating ≥ 5.
+
+---
+
+# 5. 🧩 SQL Engine Pipeline (CTE-Based)
+
+SQL engine menggunakan pipeline 18 tahap (CTE berurutan):
+
+1. params
+2. manual_set
+3. filter_based_set
+4. fallback_benchmark
+5. final_bench
+6. latest
+7. baseline_numeric
+8. baseline_papi
+9. baseline_cat
+10. all_numeric_scores
+11. numeric_tv
+12. papi_tv
+13. categorical_tv
+14. all_tv
+15. tgv_match
+16. final_match
+17. final_results
+18. final SELECT (tanpa filter)
+
+**Tidak ada filter tampilan pada final SELECT — filtering hanya di UI Streamlit.**
+
+---
+
+# 6. 🗃 Struktur Database Utama
+
+* **employees** → data master
+* **performance_yearly** → rating tahunan
+* **competencies_yearly** → kompetensi pilar
+* **profiles_psych** → IQ, GTQ, MBTI, DISC
+* **papi_scores** → 20 skala PAPI
+* **strengths** → CliftonStrengths
+* **dim_*** → tabel dimensi organisasi
+* **talent_variables_mapping** → bobot TV → TGV
+* **talent_group_weights** → bobot TGV → final score
+
+---
+
+# 7. 🔌 Integrasi Backend (core/)
+
+* `core/db.py` → koneksi database
+* `core/matching.py` → pusat logika matching
+* `core/job_generator.py` → save job vacancy
+* `core/profiling.py` → load profil 360°
+
+Matching engine bekerja berdasarkan:
+
+* UI input (manual_ids, toggle, filter B)
+* SQL template toggle-ready
+* Panduan MATCHING_ALGORITHM & SQL_ENGINE_LOGIC
+
+---
+
+# 8. 🖼 UI & UX (pages/)
+
+* Modularisasi per halaman
+* Form input sederhana & UX ramah HR
+* Table interaktif (sort, filter, export)
+* Toggle benchmark untuk Mode A
+* Filter B di-disable otomatis jika manual aktif
+
+---
+
+# 9. 🔐 Keamanan & Praktik Terbaik
+
+* Semua kredensial hanya di `.streamlit/secrets.toml`
+* Tidak ada hardcoding password
+* Tidak ada SQL injection → gunakan parameter binding
+* Error message harus aman (no stack trace)
+* Hanya user terotorisasi bisa mengakses dashboard
+
+---
+
+# 10. 📦 Status Arsitektur Terbaru
+
+Versi toggle-ready telah menghilangkan ambiguitas Mode A+B dan menyederhanakan UI:
+
+### ✔ manual_ids aktif → filter B disabled
+
+### ✔ toggle OFF → rekomendasi posisi
+
+### ✔ toggle ON → manual benchmark
+
+### ✔ manual kosong → filter B aktif (Mode B)
+
+### ✔ filter B kosong → Default Mode
+
+Fully aligned dengan MATCHING_ALGORITHM.md v3.1 dan SQL_ENGINE_LOGIC.md v3.1.
+
+---
+
+# 11. 🏁 Penutup
+
+Dokumen ini memberikan overview lengkap tentang struktur arsitektur aplikasi, mode kerja engine, pipeline SQL, dan interaksi UI x backend.
+Semua pengembangan baru harus mengikuti versi arsitektur toggle-ready ini.
+
+Jika terdapat konflik antara kode dan dokumentasi:
+**Dokumen ini adalah dasar kebenaran.**
+
+---
