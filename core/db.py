@@ -1,6 +1,7 @@
 import streamlit as st
 from sqlalchemy import create_engine, text
 
+@st.cache_resource
 def get_engine():
     DB_USER = st.secrets["DB_USER"]
     DB_PASS = st.secrets["DB_PASS"]

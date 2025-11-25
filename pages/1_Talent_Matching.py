@@ -260,11 +260,11 @@ if run_button:
                                     with st.container(border=True):
                                         rank_info = ranks.get(i)
                                         st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
-                                        st.markdown(f"<p style='text-align: center; font-weight: bold;'>{position.get('position_name', 'N/A')}</p>", unsafe_allow_html=True)
+                                        st.markdown(f"<p style='text-align: center; font-weight: bold;'>{position.get('benchmark_position', 'N/A')}</p>", unsafe_allow_html=True)
                                         st.caption(f"Score: {position['final_match_rate']:.2f}")
                                         st.divider()
 
-                                        st.markdown(f"**Current Position:** {position.get('position_name', 'N/A')}")
+                                        st.markdown(f"**Employee Current Position:** {position.get('position_name', 'N/A')}")
 
                                         # Tampilkan skor kecocokan
                                         st.metric("Match Score", f"{position['final_match_rate']:.2f}")
