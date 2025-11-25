@@ -279,9 +279,12 @@ if run_button:
                             st.session_state.search_results = df_reco
                         else:
                             st.session_state.search_results = pd.concat([st.session_state.search_results, df_reco], ignore_index=True)
+                    else:
+                        st.warning(f"⚠️ No position recommendations found for {emp_name}. This may indicate missing competency or profile data.")
             if 'search_results' in st.session_state and st.session_state.search_results is not None and not st.session_state.search_results.empty:
                 st.session_state.current_page_a = 1  # Reset halaman ke 1 untuk Mode A
                 st.session_state.last_mode_used = 'A'  # Tandai bahwa ini adalah Mode A
+                st.session_state.last_manual_ids = manual_ids  # Save manual_ids untuk detailed analysis
         elif mode_a_active and use_manual_as_benchmark:
             # Mode A - Manual Benchmark
             st.success("Ranking of all employees based on manual benchmark is ready to display.")
@@ -980,9 +983,9 @@ if 'search_results' in st.session_state and st.session_state.search_results is n
         # Determine benchmark IDs based on last mode used
         benchmark_ids_to_use = []
         
-        if st.session_state.get('last_mode_used') == 'A' and 'manual_ids' in locals():
+        if st.session_state.get('last_mode_used') == 'A' and st.session_state.get('last_manual_ids'):
             # Mode A: Use manual employee IDs as benchmark
-            benchmark_ids_to_use = manual_ids
+            benchmark_ids_to_use = st.session_state.get('last_manual_ids', [])
         # else: Mode B or default - use empty list (will default to HP rating=5)
         
         try:

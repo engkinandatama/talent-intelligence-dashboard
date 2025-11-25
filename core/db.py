@@ -10,7 +10,14 @@ def get_engine():
 
     url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-    return create_engine(url, pool_pre_ping=True)
+    return create_engine(
+        url, 
+        pool_pre_ping=True,      # Test connections before use
+        pool_size=3,             # Max 3 connections in pool (conservative for free tier)
+        max_overflow=2,          # Allow 2 extra connections if needed
+        pool_recycle=300,        # Recycle connections after 5 minutes
+        pool_timeout=30          # Wait max 30 seconds for connection
+    )
 
 def test_connection():
     try:

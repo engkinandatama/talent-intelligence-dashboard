@@ -341,7 +341,7 @@ def get_detailed_match_breakdown(engine, employee_id, benchmark_ids=None):
     benchmark_n = len(benchmark_ids) if benchmark_ids else 0
     if benchmark_n == 0:
         with engine.connect() as conn:
-            benchmark_n = pd.read_sql("SELECT COUNT(DISTINCT employee_id) FROM performance_yearly WHERE rating = 5", conn).iloc[0][0]
+            benchmark_n = pd.read_sql("SELECT COUNT(DISTINCT employee_id) FROM performance_yearly WHERE rating = 5", conn).iloc[0, 0]
     
     return {
         'tv_details': tv_details,
