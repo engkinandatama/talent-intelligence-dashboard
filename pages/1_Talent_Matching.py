@@ -339,7 +339,15 @@ if run_button:
                                     st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                                     # Menampilkan konteks benchmark
-                                    benchmark_context = "Manual Benchmark"
+                                    # Get benchmark employee names
+                                    with engine.connect() as conn:
+                                        benchmark_names = pd.read_sql(
+                                            "SELECT fullname FROM employees WHERE employee_id = ANY(%s)",
+                                            conn, params=(manual_ids,)
+                                        )['fullname'].tolist()
+                                    benchmark_context = ", ".join(benchmark_names[:3])
+                                    if len(benchmark_names) > 3:
+                                        benchmark_context += f" (+{len(benchmark_names)-3} more)"
                                     st.markdown(f"**Benchmark:** {benchmark_context}")
 
                                     st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
@@ -515,7 +523,21 @@ if run_button:
                                     st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                                     # Menampilkan konteks benchmark
-                                    benchmark_context = "Filter Benchmark"
+                                    # Build benchmark description from filters
+                                    benchmark_parts = []
+                                    if filter_position_id:
+                                        pos_name = positions_df[positions_df['position_id'] == filter_position_id]['name'].iloc[0]
+                                        benchmark_parts.append(f"Pos: {pos_name}")
+                                    if filter_department_id:
+                                        dep_name = departments_df[departments_df['department_id'] == filter_department_id]['name'].iloc[0]
+                                        benchmark_parts.append(f"Dept: {dep_name}")
+                                    if filter_division_id:
+                                        div_name = divisions_df[divisions_df['division_id'] == filter_division_id]['name'].iloc[0]
+                                        benchmark_parts.append(f"Div: {div_name}")
+                                    if filter_grade_id:
+                                        grade_name = grades_df[grades_df['grade_id'] == filter_grade_id]['name'].iloc[0]
+                                        benchmark_parts.append(f"Grade: {grade_name}")
+                                    benchmark_context = " | ".join(benchmark_parts) if benchmark_parts else "HP (Rating=5)"
                                     st.markdown(f"**Benchmark:** {benchmark_context}")
 
                                     st.metric("Match Score", f"{candidate['final_match_rate']:.2f}")
