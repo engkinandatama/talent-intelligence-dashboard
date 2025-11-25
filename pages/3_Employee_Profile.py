@@ -7,7 +7,7 @@ import numpy as np
 # Page config
 st.set_page_config(
     page_title="Employee Profile",
-    page_icon="👤",
+    page_icon="●",
     layout="wide"
 )
 
@@ -332,7 +332,7 @@ if profile['basic'] is None:
 st.markdown('<div class="profile-card">', unsafe_allow_html=True)
 st.markdown(f"""
 <div class="character-header">
-    <div class="avatar-box">👤</div>
+    <div class="avatar-box">●</div>
     <div class="character-info">
         <h1>{profile['basic']['fullname']}</h1>
         <div class="character-title">{profile['basic']['position_name']}</div>
@@ -366,7 +366,7 @@ exp_years = profile['basic']['years_of_service_months'] / 12
 with col1:
     st.markdown(f"""
     <div class="stat-box">
-        <div class="stat-label">🎯 Level</div>
+        <div class="stat-label">▸ Level</div>
         <div class="stat-value">{profile['basic']['grade_name']}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -383,7 +383,7 @@ with col3:
     avg_comp = profile['competencies']['score'].mean() if not profile['competencies'].empty else 0
     st.markdown(f"""
     <div class="stat-box">
-        <div class="stat-label">💪 Avg Competency</div>
+        <div class="stat-label">◆ Avg Competency</div>
         <div class="stat-value">{avg_comp:.1f}</div>
     </div>
     """, unsafe_allow_html=True)
@@ -405,7 +405,7 @@ col_left, col_right = st.columns([1, 1])
 with col_left:
     # Competencies Radar Chart
     st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📊 Competency Stats</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">■ Competency Stats</div>', unsafe_allow_html=True)
     
     if not profile['competencies'].empty:
         fig_radar = go.Figure()
@@ -493,7 +493,7 @@ col_bottom1, col_bottom2 = st.columns([1, 1])
 
 with col_bottom1:
     st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🏆 Top Strengths</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">◆ Top Strengths</div>', unsafe_allow_html=True)
     
     if not profile['strengths'].empty:
         # Create single HTML block with all badges
@@ -534,10 +534,10 @@ with col_bottom2:
 # DETAILED ANALYSIS TABS
 # ==============================================================================
 st.markdown('<br><br>', unsafe_allow_html=True)
-st.markdown('<div class="section-title" style="text-align: center;">📊 Detailed Analysis</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title" style="text-align: center;">■ Detailed Analysis</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🎯 PAPI Work Style", 
+    "▸ PAPI Work Style", 
     "📈 Performance History", 
     "🔍 Complete Profile (360°)",
     "🛤️ Career Journey",
@@ -547,7 +547,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # TAB 1: PAPI Work Style (20 Scales)
 with tab1:
     st.markdown('<div class="profile-card">', unsafe_allow_html=True)
-    st.markdown("### 🎯 PAPI Kostick - Work Style Preferences (20 Scales)")
+    st.markdown("### ▸ PAPI Kostick - Work Style Preferences (20 Scales)")
     
     # Load PAPI data
     papi_query = """
@@ -664,12 +664,12 @@ with tab2:
         # Performance stats
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("📊 Average Rating", f"{perf_history_df['rating'].mean():.2f}")
+            st.metric("■ Average Rating", f"{perf_history_df['rating'].mean():.2f}")
         with col2:
             st.metric("⬆️ Peak Rating", f"{perf_history_df['rating'].max():.0f}")
         with col3:
             trend = "📈 Improving" if perf_history_df.iloc[-1]['rating'] > perf_history_df.iloc[0]['rating'] else "📉 Declining" if perf_history_df.iloc[-1]['rating'] < perf_history_df.iloc[0]['rating'] else "➡️ Stable"
-            st.metric("📊 Trend", trend)
+            st.metric("▸ Trend", trend)
     else:
         st.warning("No performance history available")
     
@@ -777,7 +777,7 @@ with tab4:
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Career stats
-    st.markdown("#### 📊 Career Statistics")
+    st.markdown("#### ■ Career Statistics")
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -786,7 +786,7 @@ with tab4:
         years_since_promotion = exp_years % 3  # Placeholder logic
         st.metric("📅 Time in Current Role", f"{years_since_promotion:.1f} years")
     with col3:
-        st.metric("🎓 Education", profile['basic']['education_name'])
+        st.metric("◆ Education", profile['basic']['education_name'])
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -796,7 +796,7 @@ with tab5:
     st.markdown("### 💡 Personalized Development Plan")
     
     # AI-Generated Recommendations (rule-based for now)
-    st.markdown("#### 🎯 Recommended Focus Areas")
+    st.markdown("#### ▸ Recommended Focus Areas")
     
     # Find weakest competencies
     if not profile['competencies'].empty:
@@ -817,7 +817,7 @@ with tab5:
     if not profile['competencies'].empty:
         strongest_comps = profile['competencies'].nlargest(3, 'score')
         
-        st.markdown("**💪 Continue Leveraging:**")
+        st.markdown("**◆ Continue Leveraging:**")
         for _, comp in strongest_comps.iterrows():
             st.markdown(f"""
             <div style="background: rgba(81, 207, 102, 0.1); padding: 1rem; border-radius: 8px; border-left: 4px solid #51CF66; margin-bottom: 0.5rem;">
@@ -829,10 +829,10 @@ with tab5:
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Career trajectory
-    st.markdown("#### 🚀 Suggested Career Path")
+    st.markdown("#### ▸ Suggested Career Path")
     
     if rating >= 4:
-        st.success("✨ **High Performer Track:** You're on track for leadership roles!")
+        st.success("◆ **High Performer Track:** You're on track for leadership roles!")
         st.markdown("""
         **Recommended Next Steps:**
         - Consider leadership training programs
@@ -850,7 +850,7 @@ with tab5:
         - Set SMART goals for improvement
         """)
     else:
-        st.warning("🎯 **Development Track:** Build foundational skills")
+        st.warning("▸ **Development Track:** Build foundational skills")
         st.markdown("""
         **Recommended Next Steps:**
         - Work closely with mentor

@@ -28,7 +28,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 Talent Matching Engine")
+st.title("▸ Talent Matching Engine")
 st.caption("Find the best internal talent based on benchmark profile.")
 
 engine = get_engine()
@@ -52,7 +52,7 @@ except Exception as e:
 
 # --- UI Panel Filter (Desain baru sesuai permintaan yang direvisi) ---
 with st.container():
-    st.header("⚙️ Search & Benchmark Settings")
+    st.header("⚙ Search & Benchmark Settings")
 
     # Bagian Benchmark (Wajib untuk Matching)
     # Gunakan get() untuk mencegah error jika session_state belum diinisialisasi
@@ -188,7 +188,7 @@ if 'editing_page_final' not in st.session_state:
     st.session_state.editing_page_final = False
 
 # --- Tombol Eksekusi ---
-run_button = st.button("🚀 Run Talent Match", width="stretch", type="primary")
+run_button = st.button("▸ Run Talent Match", width="stretch", type="primary")
 
 # Tutup expander setelah tombol ditekan
 if run_button:
@@ -240,7 +240,7 @@ if run_button:
 
                         # Tambahkan Top 3 Podium untuk posisi teratas
                         if not df_reco.empty:
-                            st.subheader("🏆 Top Position Recommendations")
+                            st.subheader("▲ Top Position Recommendations")
 
                             # Ambil 3 posisi teratas
                             top_positions = df_reco.head(3).to_dict('records')
@@ -250,9 +250,9 @@ if run_button:
 
                             # Definisikan peringkat
                             ranks = {
-                                0: {"title": "🥇 1st Place", "size": "1.2rem"},
-                                1: {"title": "🥈 2nd Place", "size": "1.1rem"},
-                                2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                                0: {"title": "① 1st Place", "size": "1.2rem"},
+                                1: {"title": "② 2nd Place", "size": "1.1rem"},
+                                2: {"title": "③ 3rd Place", "size": "1.0rem"}
                             }
 
                             for i, position in enumerate(top_positions):
@@ -309,7 +309,7 @@ if run_button:
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Top Match Podium")
+                        st.subheader("▲ Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -319,9 +319,9 @@ if run_button:
 
                         # Definisikan peringkat
                         ranks = {
-                            0: {"title": "🥇 1st Place", "size": "1.2rem"},
-                            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
-                            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                            0: {"title": "① 1st Place", "size": "1.2rem"},
+                            1: {"title": "② 2nd Place", "size": "1.1rem"},
+                            2: {"title": "③ 3rd Place", "size": "1.0rem"}
                         }
 
                         for i, candidate in enumerate(top_candidates):
@@ -485,7 +485,7 @@ if run_button:
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Top Match Podium")
+                        st.subheader("▲ Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -495,9 +495,9 @@ if run_button:
 
                         # Definisikan peringkat
                         ranks = {
-                            0: {"title": "🥇 1st Place", "size": "1.2rem"},
-                            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
-                            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                            0: {"title": "① 1st Place", "size": "1.2rem"},
+                            1: {"title": "② 2nd Place", "size": "1.1rem"},
+                            2: {"title": "③ 3rd Place", "size": "1.0rem"}
                         }
 
                         for i, candidate in enumerate(top_candidates):
@@ -657,7 +657,7 @@ if run_button:
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Top Match Podium")
+                        st.subheader("▲ Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -667,9 +667,9 @@ if run_button:
 
                         # Definisikan peringkat
                         ranks = {
-                            0: {"title": "🥇 1st Place", "size": "1.2rem"},
-                            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
-                            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+                            0: {"title": "① 1st Place", "size": "1.2rem"},
+                            1: {"title": "② 2nd Place", "size": "1.1rem"},
+                            2: {"title": "③ 3rd Place", "size": "1.0rem"}
                         }
 
                         for i, candidate in enumerate(top_candidates):
@@ -814,7 +814,7 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
 
     # Tambahkan Top 3 Podium
     if not st.session_state.search_results.empty:
-        st.subheader("🏆 Top Match Podium")
+        st.subheader("▲ Top Match Podium")
 
         # Ambil 3 kandidat teratas
         top_candidates = st.session_state.search_results.head(3).to_dict('records')
@@ -824,9 +824,9 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
 
         # Definisikan peringkat
         ranks = {
-            0: {"title": "🥇 1st Place", "size": "1.2rem"},
-            1: {"title": "🥈 2nd Place", "size": "1.1rem"},
-            2: {"title": "🥉 3rd Place", "size": "1.0rem"}
+            0: {"title": "① 1st Place", "size": "1.2rem"},
+            1: {"title": "② 2nd Place", "size": "1.1rem"},
+            2: {"title": "③ 3rd Place", "size": "1.0rem"}
         }
 
         for i, candidate in enumerate(top_candidates):
