@@ -50,6 +50,7 @@ filter_based_set AS (
     JOIN public.performance_yearly py USING(employee_id)
     JOIN params p ON TRUE
     WHERE py.rating = p.min_hp_rating  -- HP rating fixed = 5 (High Performer) based on system design
+      AND py.year = (SELECT MAX(year) FROM public.performance_yearly)  -- Use latest year only
       AND (p.filter_position_id   IS NULL OR e.position_id   = p.filter_position_id)
       AND (p.filter_department_id IS NULL OR e.department_id = p.filter_department_id)
       AND (p.filter_division_id   IS NULL OR e.division_id   = p.filter_division_id)
@@ -63,6 +64,7 @@ fallback_benchmark AS (
     FROM public.performance_yearly py
     JOIN params p ON TRUE
     WHERE py.rating = p.min_hp_rating  -- HP rating fixed = 5 (High Performer) based on system design
+      AND py.year = (SELECT MAX(year) FROM public.performance_yearly)  -- Use latest year only
 ),
 
 -- FINAL BENCHMARK GROUP (final_bench)
@@ -281,8 +283,38 @@ final_match AS (
 ),
 
 -- -----------------------------------------------------------------------------------
--- TAHAP 5: PENYAJIAN HASIL AKHIR
+-- TAHAP 5: PENYAJIAN HASIL AKHIR + DATA COMPLETENESS
 -- -----------------------------------------------------------------------------------
+-- Calculate data completeness for transparency
+data_completeness AS (
+    SELECT
+        e.employee_id,
+        -- Count available data points across all talent variables
+        -- Total possible: 10 competencies + 5 cognitive + 20 PAPI + 2 personality = 37
+        (
+            -- Competencies (10 max)
+            (SELECT COUNT(*) FROM competencies_yearly cy 
+             WHERE cy.employee_id = e.employee_id 
+             AND cy.year = (SELECT MAX(year) FROM competencies_yearly)) +
+            
+            -- Cognitive (5 max: IQ, GTQ, TIKI, Pauli, Faxtor)
+            CASE WHEN pp.iq IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN pp.gtq IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN pp.tiki IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN pp.pauli IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN pp.faxtor IS NOT NULL THEN 1 ELSE 0 END +
+            
+            -- PAPI (20 scales)
+            (SELECT COUNT(*) FROM papi_scores ps WHERE ps.employee_id = e.employee_id) +
+            
+            -- Personality (2 max: MBTI, DISC)
+            CASE WHEN pp.mbti IS NOT NULL THEN 1 ELSE 0 END +
+            CASE WHEN pp.disc IS NOT NULL THEN 1 ELSE 0 END
+        ) * 100.0 / 37.0 AS completeness_pct
+    FROM employees e
+    LEFT JOIN profiles_psych pp ON e.employee_id = pp.employee_id
+),
+
 final_results AS (
     SELECT
         e.employee_id,
@@ -291,14 +323,18 @@ final_results AS (
         dep.name AS department_name,
         div.name AS division_name,
         g.name   AS grade_name,
+        dir.name AS directorate_name,
         ROUND(e.years_of_service_months / 12.0, 1) AS experience_years,
-        fm.final_match_rate
+        fm.final_match_rate,
+        ROUND(dc.completeness_pct, 1) AS data_completeness_pct
     FROM final_match fm
     JOIN public.employees e USING(employee_id)
+    LEFT JOIN data_completeness dc ON e.employee_id = dc.employee_id
     LEFT JOIN public.dim_positions   pos ON e.position_id   = pos.position_id
     LEFT JOIN public.dim_departments dep ON e.department_id = dep.department_id
     LEFT JOIN public.dim_divisions   div ON e.division_id   = div.division_id
     LEFT JOIN public.dim_grades      g   ON e.grade_id      = g.grade_id
+    LEFT JOIN public.dim_directorates dir ON e.directorate_id = dir.directorate_id
 )
 
 -- ===================================================================================

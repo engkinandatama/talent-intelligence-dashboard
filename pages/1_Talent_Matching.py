@@ -31,6 +31,14 @@ st.markdown("""
 st.title("▸ Talent Matching Engine")
 st.caption("Find the best internal talent based on benchmark profile.")
 
+# --- Workflow Bridge Logic ---
+if 'talent_match_vacancy_id' in st.session_state:
+    role_name = st.session_state.talent_match_role_name
+    st.info(f"🔍 **Workflow Active:** Searching talent for new vacancy: **{role_name}**")
+    # Ensure Mode B is active (Mode A cleared)
+    # We don't clear manual_ids here to avoid state issues, but we guide the user.
+    # Ideally we would set filters based on the vacancy, but for now we just show the context.
+
 engine = get_engine()
 
 # --- Memuat semua data untuk dropdown filter ---
@@ -137,9 +145,22 @@ with st.container():
 
             min_rating = 5  # HP rating fixed = 5 (High Performer) based on system design
 
+            min_rating = 5  # HP rating fixed = 5 (High Performer) based on system design
+
         # Penjelasan untuk skenario
         st.divider()
         st.markdown("**Mode Explanation:**")
+        
+        # Tooltip for New Weights
+        with st.expander("ℹ️ Scoring Logic (Updated)", expanded=False):
+            st.markdown("""
+            The matching engine uses the **Success Formula v2025**:
+            - **50%** Competencies
+            - **25%** Work Style (PAPI)
+            - **10%** Cognitive Ability
+            - **10%** Strengths
+            - **5%** Personality
+            """)
 
         if manual_ids and not use_manual_as_benchmark:
             st.info(
@@ -272,7 +293,19 @@ if run_button:
                             st.divider() # Tambahkan pemisah setelah podium
 
                         # Tampilkan tabel rekomendasi posisi untuk karyawan ini
-                        st.dataframe(df_reco, width="stretch")
+                        st.dataframe(
+                            df_reco,
+                            column_config={
+                                'data_completeness_pct': st.column_config.ProgressColumn(
+                                    'Data Completeness',
+                                    help='Percentage of available talent data (out of 37 total variables)',
+                                    format='%.1f%%',
+                                    min_value=0,
+                                    max_value=100
+                                )
+                            },
+                            width="stretch"
+                        )
 
                         # Save results to session state for each employee
                         if 'search_results' not in st.session_state or st.session_state.search_results is None:
@@ -373,7 +406,19 @@ if run_button:
                         paginated_df = result_df.iloc[start_idx:end_idx]
 
                         # Tampilkan tabel yang sudah dipaginasi
-                        st.dataframe(paginated_df, width="stretch")
+                        st.dataframe(
+                            paginated_df,
+                            column_config={
+                                'data_completeness_pct': st.column_config.ProgressColumn(
+                                    'Data Completeness',
+                                    help='Percentage of available talent data (out of 37 total variables)',
+                                    format='%.1f%%',
+                                    min_value=0,
+                                    max_value=100
+                                )
+                            },
+                            width="stretch"
+                        )
 
                         # Gunakan 3 kolom untuk menempatkan pagination di tengah
                         _, mid_col, _ = st.columns([.3, .4, .3])
@@ -563,7 +608,19 @@ if run_button:
                         paginated_df = result_df.iloc[start_idx:end_idx]
 
                         # Tampilkan tabel yang sudah dipaginasi
-                        st.dataframe(paginated_df, width="stretch")
+                        st.dataframe(
+                            paginated_df,
+                            column_config={
+                                'data_completeness_pct': st.column_config.ProgressColumn(
+                                    'Data Completeness',
+                                    help='Percentage of available talent data (out of 37 total variables)',
+                                    format='%.1f%%',
+                                    min_value=0,
+                                    max_value=100
+                                )
+                            },
+                            width="stretch"
+                        )
 
                         # Gunakan 3 kolom untuk menempatkan pagination di tengah
                         _, mid_col, _ = st.columns([.3, .4, .3])

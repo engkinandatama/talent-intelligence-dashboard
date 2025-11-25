@@ -1,48 +1,48 @@
 -- ===================================================================================
 -- GOLDEN TEMPLATE: TALENT MATCHING ENGINE (TOGGLE-READY)
 -- ===================================================================================
--- Proyek : Talent Match Intelligence Dashboard
--- Versi  : 3.1 (Benchmark-Driven + Manual Benchmark Toggle)
+-- Project : Talent Match Intelligence Dashboard
+-- Version : 3.1 (Benchmark-Driven + Manual Benchmark Toggle)
 --
--- ATURAN BESAR:
--- 1. STRUKTUR CTE & URUTANNYA TIDAK BOLEH DIUBAH.
--- 2. LOGIKA INTI (PERCENTILE_CONT, MODE, RUMUS MATCHING) TIDAK BOLEH DIGANTI.
--- 3. MODIFIKASI HANYA DIIZINKAN DI BAGIAN YANG DITANDAI, UTAMANYA PARAMETER.
--- 4. TIDAK ADA FILTER KANDIDAT DI FINAL SELECT (SEMUA FILTER = BENCHMARK BUILDER).
--- 5. NILAI PARAMETER `{...}` AKAN DIISI OLEH PYTHON SECARA DINAMIS.
+-- CORE RULES:
+-- 1. CTE STRUCTURE & ORDER MUST NOT BE CHANGED.
+-- 2. CORE LOGIC (PERCENTILE_CONT, MODE, MATCHING FORMULAS) MUST NOT BE ALTERED.
+-- 3. MODIFICATIONS ONLY ALLOWED IN PARAMETER SECTIONS.
+-- 4. NO CANDIDATE FILTERING IN FINAL SELECT (ALL FILTERS = BENCHMARK BUILDER).
+-- 5. PARAMETER VALUES `{...}` WILL BE DYNAMICALLY FILLED BY PYTHON.
 -- ===================================================================================
 
 WITH
 -- -----------------------------------------------------------------------------------
--- TAHAP 1: PARAMETER & PEMBENTUK BENCHMARK
+-- STAGE 1: PARAMETERS & BENCHMARK BUILDER
 -- -----------------------------------------------------------------------------------
 params AS (
     SELECT
-        -- Diisi oleh Python (ARRAY['EMP001','EMP002']::text[] atau ARRAY[]::text[])
+        -- Filled by Python (ARRAY['EMP001','EMP002']::text[] or ARRAY[]::text[])
         {manual_array_sql}                            AS manual_hp,
 
-        -- FILTER BENCHMARK (MODE B) - DIISI PYTHON (angka atau NULL)
+        -- BENCHMARK FILTERS (MODE B) - FILLED BY PYTHON (int or NULL)
         {filter_position_id}::int                     AS filter_position_id,
         {filter_department_id}::int                   AS filter_department_id,
         {filter_division_id}::int                     AS filter_division_id,
         {filter_grade_id}::int                        AS filter_grade_id,
 
-        -- MINIMUM RATING UNTUK HIGH PERFORMER (biasanya 5)
+        -- MINIMUM RATING FOR HIGH PERFORMER (usually 5)
         {min_rating}::int                             AS min_hp_rating,
 
-        -- TOGGLE: GUNAKAN MANUAL_ID SEBAGAI BENCHMARK?
+        -- TOGGLE: USE MANUAL_ID AS BENCHMARK?
         -- TRUE  = Mode A (Manual Benchmark)
-        -- FALSE = Mode B / Default (Manual kosong)
+        -- FALSE = Mode B / Default (Manual empty)
         {use_manual_as_benchmark}::boolean            AS use_manual_as_benchmark
 ),
 
--- Kumpulan manual benchmark (Mode A dengan toggle ON)
+-- Manual Benchmark Set (Mode A with toggle ON)
 manual_set AS (
     SELECT unnest(p.manual_hp) AS employee_id
     FROM params p
 ),
 
--- Kumpulan benchmark berbasis filter (Mode B)
+-- Filter-Based Benchmark Set (Mode B)
 filter_based_set AS (
     SELECT DISTINCT e.employee_id
     FROM public.employees e
@@ -55,7 +55,7 @@ filter_based_set AS (
       AND (p.filter_grade_id      IS NULL OR e.grade_id      = p.filter_grade_id)
 ),
 
--- Fallback benchmark jika tidak ada manual & filter
+-- Fallback Benchmark (Default Mode)
 fallback_benchmark AS (
     SELECT py.employee_id
     FROM public.performance_yearly py
@@ -64,15 +64,15 @@ fallback_benchmark AS (
 ),
 
 -- FINAL BENCHMARK GROUP (final_bench)
--- Aturan:
---   1) Jika use_manual_as_benchmark = TRUE dan manual_hp tidak kosong:
+-- Logic:
+--   1) IF use_manual_as_benchmark = TRUE AND manual_hp not empty:
 --        final_bench = manual_set
---   2) Jika manual kosong & filter menghasilkan data:
+--   2) IF manual empty & filters yield data:
 --        final_bench = filter_based_set
---   3) Jika tidak ada input sama sekali:
+--   3) IF no input at all:
 --        final_bench = fallback_benchmark
 final_bench AS (
-    -- Kasus 1: Manual Benchmark (Mode A - Toggle ON)
+    -- Case 1: Manual Benchmark (Mode A - Toggle ON)
     SELECT ms.employee_id
     FROM manual_set ms
     JOIN params p ON TRUE
@@ -80,7 +80,7 @@ final_bench AS (
 
     UNION
 
-    -- Kasus 2: Filter Benchmark (Mode B) - Hanya jika tidak menggunakan manual
+    -- Case 2: Filter Benchmark (Mode B) - Only if NOT using manual
     SELECT fb.employee_id
     FROM filter_based_set fb
     JOIN params p ON TRUE
@@ -89,7 +89,7 @@ final_bench AS (
 
     UNION
 
-    -- Kasus 3: Fallback Benchmark (Default Mode)
+    -- Case 3: Fallback Benchmark (Default Mode)
     SELECT fb2.employee_id
     FROM fallback_benchmark fb2
     JOIN params p ON TRUE
@@ -99,7 +99,7 @@ final_bench AS (
 ),
 
 -- -----------------------------------------------------------------------------------
--- TAHAP 2: PERHITUNGAN SKOR BASELINE
+-- STAGE 2: BASELINE SCORE CALCULATION
 -- -----------------------------------------------------------------------------------
 latest AS (
     SELECT (SELECT MAX(year) FROM public.competencies_yearly) AS comp_year
@@ -174,7 +174,7 @@ baseline_cat AS (
 ),
 
 -- -----------------------------------------------------------------------------------
--- TAHAP 3: PERHITUNGAN tv_match_rate UNTUK SEMUA KARYAWAN
+-- STAGE 3: TV MATCH RATE CALCULATION FOR ALL EMPLOYEES
 -- -----------------------------------------------------------------------------------
 all_numeric_scores AS (
     SELECT
@@ -257,7 +257,7 @@ all_tv AS (
 ),
 
 -- -----------------------------------------------------------------------------------
--- TAHAP 4: AGREGASI TGV & SKOR AKHIR
+-- STAGE 4: TGV AGGREGATION & FINAL SCORE
 -- -----------------------------------------------------------------------------------
 tgv_match AS (
     SELECT
@@ -279,7 +279,7 @@ final_match AS (
 ),
 
 -- -----------------------------------------------------------------------------------
--- TAHAP 5: PENYAJIAN HASIL AKHIR
+-- STAGE 5: FINAL OUTPUT FORMATTING
 -- -----------------------------------------------------------------------------------
 final_results AS (
     SELECT
@@ -288,24 +288,19 @@ final_results AS (
         pos.name AS position_name,
         dep.name AS department_name,
         div.name AS division_name,
-        g.name   AS grade_name,
+        dir.name AS directorate_name, -- Added Directorate
+        g.name AS grade_name,
         ROUND(e.years_of_service_months / 12.0, 1) AS experience_years,
-        fm.final_match_rate
+        ROUND(fm.final_match_rate, 2) AS final_match_rate
     FROM final_match fm
-    JOIN public.employees e USING(employee_id)
-    LEFT JOIN public.dim_positions   pos ON e.position_id   = pos.position_id
+    JOIN public.employees e ON fm.employee_id = e.employee_id
+    LEFT JOIN public.dim_positions pos ON e.position_id = pos.position_id
     LEFT JOIN public.dim_departments dep ON e.department_id = dep.department_id
-    LEFT JOIN public.dim_divisions   div ON e.division_id   = div.division_id
-    LEFT JOIN public.dim_grades      g   ON e.grade_id      = g.grade_id
+    LEFT JOIN public.dim_divisions div ON e.division_id = div.division_id
+    LEFT JOIN public.dim_directorates dir ON e.directorate_id = dir.directorate_id -- Assumed Join
+    LEFT JOIN public.dim_grades g ON e.grade_id = g.grade_id
 )
 
--- ===================================================================================
--- FINAL SELECT
--- Catatan:
--- - TIDAK ADA FILTER TAMBAHAN DI SINI.
--- - SORT/FILTER UNTUK TAMPILAN DILAKUKAN DI LEVEL STREAMLIT (UI), BUKAN DI SQL.
--- ===================================================================================
-SELECT *
-FROM final_results
+SELECT * FROM final_results
 ORDER BY final_match_rate DESC
 LIMIT 200;

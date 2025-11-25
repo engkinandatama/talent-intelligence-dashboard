@@ -51,6 +51,7 @@ def get_detailed_match_breakdown(engine, employee_id, benchmark_ids=None):
         SELECT py.employee_id
         FROM performance_yearly py
         WHERE py.rating = 5
+          AND py.year = (SELECT MAX(year) FROM performance_yearly)
           AND NOT {use_custom_benchmark}
     ),
     
@@ -234,19 +235,29 @@ def get_detailed_match_breakdown(engine, employee_id, benchmark_ids=None):
         LEFT JOIN user_papi up ON bp.tv_name = up.tv_name
     ),
     
-    -- TGV aggregation
+    -- TGV aggregation with dynamic weights from database
+    tgv_weights_table AS (
+        SELECT tgv_name, tgv_weight
+        FROM talent_group_weights
+    ),
+    
     tgv_aggregation AS (
         SELECT
-            tgv_name,
-            SUM(tv_match_rate * tv_weight) / NULLIF(SUM(tv_weight), 0) AS tgv_match_rate,
+            tm.tgv_name,
+            SUM(tm.tv_match_rate * tm.tv_weight) / NULLIF(SUM(tm.tv_weight), 0) AS tgv_match_rate,
+            COALESCE(tw.tgv_weight, 0.15) AS tgv_weight
+        FROM tv_matches tm
+        LEFT JOIN tgv_weights_table tw ON UPPER(tm.tgv_name) = UPPER(
             CASE
-                WHEN tgv_name = 'COGNITIVE' THEN 0.30
-                WHEN tgv_name = 'COMPETENCY' THEN 0.35
-                WHEN tgv_name = 'WORK_STYLE' THEN 0.20
-                ELSE 0.15
-            END AS tgv_weight
-        FROM tv_matches
-        GROUP BY tgv_name
+                WHEN tw.tgv_name = 'Competency' THEN 'COMPETENCY'
+                WHEN tw.tgv_name = 'Cognitive' THEN 'COGNITIVE'
+                WHEN tw.tgv_name = 'Workstyle' THEN 'WORK_STYLE'
+                WHEN tw.tgv_name = 'Personality' THEN 'PERSONALITY'
+                WHEN tw.tgv_name = 'Strengths' THEN 'STRENGTHS'
+                ELSE tw.tgv_name
+            END
+        )
+        GROUP BY tm.tgv_name, tw.tgv_weight
     ),
     
     -- Final score
@@ -341,7 +352,7 @@ def get_detailed_match_breakdown(engine, employee_id, benchmark_ids=None):
     benchmark_n = len(benchmark_ids) if benchmark_ids else 0
     if benchmark_n == 0:
         with engine.connect() as conn:
-            benchmark_n = pd.read_sql("SELECT COUNT(DISTINCT employee_id) FROM performance_yearly WHERE rating = 5", conn).iloc[0, 0]
+            benchmark_n = pd.read_sql("SELECT COUNT(DISTINCT employee_id) FROM performance_yearly WHERE rating = 5 AND year = (SELECT MAX(year) FROM performance_yearly)", conn).iloc[0, 0]
     
     return {
         'tv_details': tv_details,

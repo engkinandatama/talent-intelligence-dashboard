@@ -509,11 +509,3 @@ except Exception as e:
             st.rerun()
         else:
             st.error("❌ Failed")
-
-# Footer
-st.markdown('<br>', unsafe_allow_html=True)
-st.markdown("""
-<div style='text-align: center; color: #6B7B94; padding: 2rem 0;'>
-    <small>Talent Intelligence Dashboard © 2025. All rights reserved.</small>
-</div>
-""", unsafe_allow_html=True)
