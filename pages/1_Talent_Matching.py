@@ -159,7 +159,7 @@ with st.container():
         else:
             st.warning(
                 "⚫ **Default Benchmark**\n"
-                "Sistem menggunakan High Performers (rating = 5) sebagai baseline."
+                "The system uses High Performers (rating = 5) as the baseline."
             )
 
 # --- Initialize Session State ---
