@@ -6,5 +6,6 @@ CREATE TABLE public.job_vacancies (
     key_responsibilities TEXT[],
     qualifications TEXT[],
     required_competencies TEXT[],
+    success_metrics TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now()
 );

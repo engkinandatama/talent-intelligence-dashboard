@@ -20,7 +20,7 @@ def get_engine():
 
 def save_job_vacancy(role_name: str, job_level: str, role_purpose: str,
                      key_responsibilities: list, qualifications: list,
-                     required_competencies: list) -> Optional[int]:
+                     required_competencies: list, success_metrics: list = None) -> Optional[int]:
     """
     Save a job vacancy to the database.
 
@@ -31,6 +31,7 @@ def save_job_vacancy(role_name: str, job_level: str, role_purpose: str,
         key_responsibilities (list): List of key responsibilities
         qualifications (list): List of qualifications
         required_competencies (list): List of required competencies
+        success_metrics (list, optional): List of success metrics/KPIs. Defaults to None.
 
     Returns:
         Optional[int]: The ID of the newly created vacancy, or None if failed
@@ -62,15 +63,54 @@ def save_job_vacancy(role_name: str, job_level: str, role_purpose: str,
                     key_responsibilities TEXT[],
                     qualifications TEXT[],
                     required_competencies TEXT[],
+                    success_metrics TEXT[] DEFAULT '{}',
                     created_at TIMESTAMPTZ DEFAULT now()
                 );
                 """
                 conn.execute(text(create_table_sql))
                 conn.commit()
                 st.info("✅ Job vacancies table created successfully!")
+            else:
+                # Check if success_metrics column exists, if not add it
+                check_col_sql = """
+                SELECT EXISTS (
+                    SELECT FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    AND table_name = 'job_vacancies'
+                    AND column_name = 'success_metrics'
+                );
+                """
+                col_exists = conn.execute(text(check_col_sql)).scalar()
+                if not col_exists:
+                    conn.execute(text("ALTER TABLE public.job_vacancies ADD COLUMN success_metrics TEXT[] DEFAULT '{}';"))
+                    conn.commit()
+                    # st.info("🔄 Database schema updated: Added success_metrics column.")
 
             # Now reflect the table
             job_vacancies_table = Table('job_vacancies', metadata, autoload_with=conn, schema='public')
+
+            # Handle qualifications if it's a dict (convert to list of strings for TEXT[] column)
+            final_qualifications = qualifications
+            if isinstance(qualifications, dict):
+                final_qualifications = []
+                if 'education' in qualifications:
+                    final_qualifications.append(f"Education: {qualifications['education']}")
+                if 'experience' in qualifications:
+                    final_qualifications.append(f"Experience: {qualifications['experience']}")
+                if 'skills' in qualifications and isinstance(qualifications['skills'], list):
+                    skills_str = ", ".join(qualifications['skills'])
+                    final_qualifications.append(f"Skills: {skills_str}")
+            
+            # Handle required_competencies if it's a list of dicts (convert to list of strings)
+            final_competencies = []
+            if required_competencies:
+                for comp in required_competencies:
+                    if isinstance(comp, dict):
+                        final_competencies.append(f"{comp.get('name', '')}: {comp.get('description', '')}")
+                    else:
+                        final_competencies.append(str(comp))
+            else:
+                final_competencies = required_competencies
 
             # Prepare the data as a single dictionary
             vacancy_data = {
@@ -78,8 +118,9 @@ def save_job_vacancy(role_name: str, job_level: str, role_purpose: str,
                 'job_level': job_level,
                 'role_purpose': role_purpose,
                 'key_responsibilities': key_responsibilities,
-                'qualifications': qualifications,
-                'required_competencies': required_competencies
+                'qualifications': final_qualifications,
+                'required_competencies': final_competencies,
+                'success_metrics': success_metrics or []
             }
 
             # Execute the insert with RETURNING clause to get the inserted ID

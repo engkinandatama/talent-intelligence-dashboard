@@ -1,0 +1,219 @@
+/* ============================================================
+   FONT EMBEDDING — PLUS JAKARTA SANS
+   ============================================================ */
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("fonts/PlusJakartaSans-Regular.ttf") format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("fonts/PlusJakartaSans-Medium.ttf") format("truetype");
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("fonts/PlusJakartaSans-Bold.ttf") format("truetype");
+    font-weight: 700;
+}
+
+/* ============================================================
+   GLOBAL SETTINGS (B/W Friendly)
+   ============================================================ */
+html, body {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.48;
+    color: #000; /* PURE BLACK for crisp printing */
+    text-align: justify;
+    -webkit-print-color-adjust: exact;
+}
+
+body {
+    transform: scale(1.06);
+    transform-origin: top center;
+}
+
+/* ============================================================
+   CONTENT WIDTH
+   ============================================================ */
+body > *, .main-content, .content-wrapper {
+    max-width: 900px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+/* ============================================================
+   HEADINGS
+   ============================================================ */
+h1, h2, h3, h4 {
+    page-break-after: avoid;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #000; /* solid black */
+}
+
+/* ============================================================
+   IMAGES (AUTO SCALE)
+   ============================================================ */
+img {
+    width: 100% !important;
+    height: auto !important;
+    margin: 10px 0 16px 0;
+    image-rendering: optimizeQuality;
+    transform: translateZ(0);
+    page-break-inside: avoid;
+}
+
+/* ============================================================
+   PARAGRAPHS & LISTS
+   ============================================================ */
+p, ul, ol {
+    margin-bottom: 14px;
+}
+
+ul li, ol li {
+    margin-bottom: 6px;
+}
+
+/* ============================================================
+   TABLE — BLACK & WHITE PROFESSIONAL
+   ============================================================ */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin-bottom: 18px;
+}
+
+/* Header: bold + black underline */
+table th {
+    font-weight: 700;
+    padding: 8px 4px;
+    border-bottom: 2px solid #000; /* pure black line */
+    text-align: left;
+    background: none !important;
+    color: #000;
+}
+
+/* Row cells: thin dark grey line */
+table td {
+    padding: 6px 4px;
+    border-bottom: 1px solid #555; /* dark grey for clean printing */
+    color: #000;
+}
+
+/* Remove all vertical lines */
+table th, table td {
+    border-left: none !important;
+    border-right: none !important;
+}
+
+/* No zebra striping — clean B/W */
+table tr:nth-child(even),
+table tr:nth-child(odd) {
+    background: none !important;
+}
+
+/* ============================================================
+   CODE BLOCK ("pre") — B/W with GREY TONE
+   ============================================================ */
+pre {
+    background: #f2f2f2; /* LIGHT GREY background */
+    padding: 12px 16px;
+    border-radius: 6px;
+    border: 1px solid #bbb; /* medium grey */
+    font-size: 13px;
+    line-height: 1.45;
+    margin-bottom: 16px;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-x: hidden !important;
+    color: #222; /* dark grey text */
+}
+
+/* ============================================================
+   INLINE CODE — DARK GREY (NO BOX)
+   ============================================================ */
+code {
+    background: none !important; /* no highlight background */
+    color: #444 !important; /* darker grey to differentiate */
+    font-size: 13px;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    padding: 0 !important;
+}
+
+/* ============================================================
+   BLOCKQUOTE (B/W Clean)
+   ============================================================ */
+blockquote {
+    border-left: 3px solid #555; /* dark grey */
+    padding: 10px 16px;
+    background: #f4f4f4; /* very light grey */
+    margin: 16px 0;
+    color: #333;
+}
+
+/* ============================================================
+   CALLOUT / CARD (B/W)
+   ============================================================ */
+.callout, .card {
+    border: 1px solid #bbb; /* mid grey */
+    background: #f6f6f6;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 18px 0;
+    color: #000;
+}
+
+.callout-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #000;
+}
+
+/* ============================================================
+   PAGE BREAK CONTROL
+   ============================================================ */
+img, table, pre, blockquote, .card, .callout {
+    page-break-inside: avoid;
+}
+
+section, article, div {
+    page-break-inside: avoid;
+}
+
+/* ============================================
+   SYNTAX HIGHLIGHT OVERRIDE — BLACK & WHITE
+   Replace red/blue/green with grayscale
+   ============================================ */
+
+code span.kw { color: #333 !important; font-weight: 600; }   /* keywords (for, if, etc.) */
+code span.st { color: #555 !important; }                     /* strings */
+code span.co { color: #777 !important; font-style: italic; } /* comments */
+code span.dv { color: #444 !important; }                     /* numbers */
+code span.fu { color: #333 !important; font-weight: 600; }   /* functions */
+code span.op { color: #444 !important; }                     /* operators */
+code span.va { color: #333 !important; }                     /* variables */
+code span.cn { color: #444 !important; }                     /* constants */
+code span.ch { color: #555 !important; }                     /* char literal */
+code span.dt { color: #444 !important; }                     /* data types */
+code span.bn { color: #444 !important; }                     /* booleans */
+code span.al { color: #333 !important; }                     /* alerts/error */
+code span.cf { color: #333 !important; font-weight: 600; }   /* control flow */
+code span.im { color: #333 !important; }                     /* import/include */
+code span.ex { color: #333 !important; }                     /* exceptions */
+
+/* For PRE blocks too */
+pre code span { 
+    background: none !important;
+}
