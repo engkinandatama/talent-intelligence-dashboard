@@ -1,182 +1,194 @@
-# Skema Database Supabase (PostgreSQL)
+# Database Schema
 
-Berikut adalah struktur lengkap dari semua tabel yang digunakan dalam proyek ini.
+## Overview
 
-### Tabel Utama (Facts)
+This document describes the database structure for the Talent Intelligence Dashboard. The schema uses PostgreSQL and follows a star schema design with fact and dimension tables.
 
-- **`employees`**: Menyimpan data master karyawan. `employee_id` adalah `text`.
-- **`performance_yearly`**: Menyimpan data rating kinerja tahunan.
-- **`competencies_yearly`**: Menyimpan skor 10 pilar kompetensi tahunan.
-- **`profiles_psych`**: Menyimpan data hasil tes psikometri (IQ, GTQ, MBTI, DISC, dll).
-- **`papi_scores`**: Menyimpan 20 skor preferensi kerja PAPI Kostick.
-- **`strengths`**: Menyimpan data 5 kekuatan teratas dari CliftonStrengths.
+## Core Tables
 
-### Tabel Dimensi (Dimensions)
+### Fact Tables
 
-- `dim_companies`
-- `dim_areas`
-- `dim_positions`
-- `dim_departments`
-- `dim_divisions`
-- `dim_directorates`
-- `dim_grades`
-- `dim_education`
-- `dim_majors`
-- `dim_competency_pillars`
+**employees**
+- Master employee data
+- Primary key: `employee_id` (text)
+- Contains basic employee information, position, department, grade
 
-### Tabel Konfigurasi Matching Engine
+**performance_yearly**
+- Annual performance ratings
+- Links employees to their yearly performance scores
 
-- **`talent_variables_mapping`**: Menyimpan pemetaan dan bobot dari setiap TV ke TGV-nya.
-- **`talent_group_weights`**: Menyimpan bobot untuk setiap TGV dalam perhitungan skor final.
+**competencies_yearly**
+- Competency scores across 10 pillars
+- Tracked annually for each employee
+
+**profiles_psych**
+- Psychometric test results
+- Includes IQ, GTQ, MBTI, DISC, Pauli scores
+
+**papi_scores**
+- PAPI Kostick work preferences (20 scales)
+- Measures work style and behavioral tendencies
+
+**strengths**
+- CliftonStrengths data
+- Top 5 strengths per employee
+
+### Dimension Tables
+
+- `dim_companies` - Company master data
+- `dim_areas` - Business areas
+- `dim_positions` - Job positions
+- `dim_departments` - Departments
+- `dim_divisions` - Divisions
+- `dim_directorates` - Directorates
+- `dim_grades` - Job grades
+- `dim_education` - Education levels
+- `dim_majors` - Academic majors
+- `dim_competency_pillars` - Competency framework definitions
+
+### Configuration Tables
+
+**talent_variables_mapping**
+- Maps individual variables (TV) to talent groups (TGV)
+- Defines weights for each variable
+
+**talent_group_weights**
+- Defines weights for each talent group in final scoring
+
+**job_vacancies** (Optional)
+- Stores generated job profiles
+- Created by Job Generator feature
 
 ---
 
-*Catatan: Skema `CREATE TABLE` lengkap ada di file terpisah jika diperlukan.*
+## Complete SQL Schema
 
-
-### ini SQL-scheme dari supabase yang aku copy
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
-
-CREATE TABLE public.competencies_yearly (
-  employee_id text NOT NULL,
-  pillar_code character varying NOT NULL,
-  year integer NOT NULL,
-  score integer,
-  CONSTRAINT competencies_yearly_pkey PRIMARY KEY (employee_id, pillar_code, year),
-  CONSTRAINT competencies_yearly_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id),
-  CONSTRAINT competencies_yearly_pillar_code_fkey FOREIGN KEY (pillar_code) REFERENCES public.dim_competency_pillars(pillar_code)
-);
-CREATE TABLE public.dim_areas (
-  area_id integer NOT NULL DEFAULT nextval('dim_areas_area_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_areas_pkey PRIMARY KEY (area_id)
-);
-CREATE TABLE public.dim_companies (
-  company_id integer NOT NULL DEFAULT nextval('dim_companies_company_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_companies_pkey PRIMARY KEY (company_id)
-);
-CREATE TABLE public.dim_competency_pillars (
-  pillar_code character varying NOT NULL,
-  pillar_label text NOT NULL,
-  CONSTRAINT dim_competency_pillars_pkey PRIMARY KEY (pillar_code)
-);
-CREATE TABLE public.dim_departments (
-  department_id integer NOT NULL DEFAULT nextval('dim_departments_department_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_departments_pkey PRIMARY KEY (department_id)
-);
-CREATE TABLE public.dim_directorates (
-  directorate_id integer NOT NULL DEFAULT nextval('dim_directorates_directorate_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_directorates_pkey PRIMARY KEY (directorate_id)
-);
-CREATE TABLE public.dim_divisions (
-  division_id integer NOT NULL DEFAULT nextval('dim_divisions_division_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_divisions_pkey PRIMARY KEY (division_id)
-);
-CREATE TABLE public.dim_education (
-  education_id integer NOT NULL DEFAULT nextval('dim_education_education_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_education_pkey PRIMARY KEY (education_id)
-);
-CREATE TABLE public.dim_grades (
-  grade_id integer NOT NULL DEFAULT nextval('dim_grades_grade_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_grades_pkey PRIMARY KEY (grade_id)
-);
-CREATE TABLE public.dim_majors (
-  major_id integer NOT NULL DEFAULT nextval('dim_majors_major_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_majors_pkey PRIMARY KEY (major_id)
-);
-CREATE TABLE public.dim_positions (
-  position_id integer NOT NULL DEFAULT nextval('dim_positions_position_id_seq'::regclass),
-  name text NOT NULL,
-  CONSTRAINT dim_positions_pkey PRIMARY KEY (position_id)
-);
+```sql
+-- Main fact tables
 CREATE TABLE public.employees (
-  employee_id text NOT NULL,
-  fullname text,
-  nip text,
-  company_id integer,
-  area_id integer,
+  employee_id text NOT NULL PRIMARY KEY,
+  fullname text NOT NULL,
   position_id integer,
   department_id integer,
   division_id integer,
-  directorate_id integer,
   grade_id integer,
   education_id integer,
   major_id integer,
-  years_of_service_months integer,
-  CONSTRAINT employees_pkey PRIMARY KEY (employee_id),
-  CONSTRAINT employees_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.dim_companies(company_id),
-  CONSTRAINT employees_area_id_fkey FOREIGN KEY (area_id) REFERENCES public.dim_areas(area_id),
-  CONSTRAINT employees_position_id_fkey FOREIGN KEY (position_id) REFERENCES public.dim_positions(position_id),
-  CONSTRAINT employees_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.dim_departments(department_id),
-  CONSTRAINT employees_division_id_fkey FOREIGN KEY (division_id) REFERENCES public.dim_divisions(division_id),
-  CONSTRAINT employees_directorate_id_fkey FOREIGN KEY (directorate_id) REFERENCES public.dim_directorates(directorate_id),
-  CONSTRAINT employees_grade_id_fkey FOREIGN KEY (grade_id) REFERENCES public.dim_grades(grade_id),
-  CONSTRAINT employees_education_id_fkey FOREIGN KEY (education_id) REFERENCES public.dim_education(education_id),
-  CONSTRAINT employees_major_id_fkey FOREIGN KEY (major_id) REFERENCES public.dim_majors(major_id)
+  -- Additional fields as needed
+  CONSTRAINT employees_position_fkey FOREIGN KEY (position_id) REFERENCES dim_positions(position_id),
+  CONSTRAINT employees_department_fkey FOREIGN KEY (department_id) REFERENCES dim_departments(department_id),
+  CONSTRAINT employees_division_fkey FOREIGN KEY (division_id) REFERENCES dim_divisions(division_id),
+  CONSTRAINT employees_grade_fkey FOREIGN KEY (grade_id) REFERENCES dim_grades(grade_id),
+  CONSTRAINT employees_education_fkey FOREIGN KEY (education_id) REFERENCES dim_education(education_id)
 );
-CREATE TABLE public.papi_scores (
-  employee_id text NOT NULL,
-  scale_code text NOT NULL,
-  score integer,
-  CONSTRAINT papi_scores_pkey PRIMARY KEY (employee_id, scale_code),
-  CONSTRAINT papi_scores_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
-);
+
 CREATE TABLE public.performance_yearly (
   employee_id text NOT NULL,
   year integer NOT NULL,
   rating integer,
   CONSTRAINT performance_yearly_pkey PRIMARY KEY (employee_id, year),
-  CONSTRAINT performance_yearly_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
+  CONSTRAINT performance_yearly_employee_fkey FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
 );
-CREATE TABLE public.profiles_psych (
+
+CREATE TABLE public.competencies_yearly (
   employee_id text NOT NULL,
-  pauli numeric,
-  faxtor numeric,
-  disc text,
-  disc_word text,
-  mbti text,
-  iq numeric,
-  gtq integer,
-  tiki integer,
-  CONSTRAINT profiles_psych_pkey PRIMARY KEY (employee_id),
-  CONSTRAINT profiles_psych_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
+  pillar_code varchar NOT NULL,
+  year integer NOT NULL,
+  score integer,
+  CONSTRAINT competencies_yearly_pkey PRIMARY KEY (employee_id, pillar_code, year),
+  CONSTRAINT competencies_yearly_employee_fkey FOREIGN KEY (employee_id) REFERENCES employees(employee_id),
+  CONSTRAINT competencies_yearly_pillar_fkey FOREIGN KEY (pillar_code) REFERENCES dim_competency_pillars(pillar_code)
 );
+
+CREATE TABLE public.profiles_psych (
+  employee_id text NOT NULL PRIMARY KEY,
+  iq integer,
+  gtq integer,
+  pauli integer,
+  mbti text,
+  disc text,
+  CONSTRAINT profiles_psych_employee_fkey FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+
+CREATE TABLE public.papi_scores (
+  employee_id text NOT NULL,
+  scale_code varchar NOT NULL,
+  score integer,
+  CONSTRAINT papi_scores_pkey PRIMARY KEY (employee_id, scale_code),
+  CONSTRAINT papi_scores_employee_fkey FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+
 CREATE TABLE public.strengths (
   employee_id text NOT NULL,
   rank integer NOT NULL,
-  theme text,
+  strength_name text,
   CONSTRAINT strengths_pkey PRIMARY KEY (employee_id, rank),
-  CONSTRAINT strengths_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
+  CONSTRAINT strengths_employee_fkey FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
 );
-CREATE TABLE public.talent_benchmarks (
-  benchmark_id integer NOT NULL DEFAULT nextval('talent_benchmarks_benchmark_id_seq'::regclass),
-  employee_id text,
-  CONSTRAINT talent_benchmarks_pkey PRIMARY KEY (benchmark_id),
-  CONSTRAINT talent_benchmarks_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
+
+-- Dimension tables
+CREATE TABLE public.dim_positions (
+  position_id serial PRIMARY KEY,
+  name text NOT NULL
 );
-CREATE TABLE public.talent_group_weights (
-  tgv_name text NOT NULL,
-  tgv_weight numeric,
-  CONSTRAINT talent_group_weights_pkey PRIMARY KEY (tgv_name)
+
+CREATE TABLE public.dim_departments (
+  department_id serial PRIMARY KEY,
+  name text NOT NULL
 );
-CREATE TABLE public.talent_match_results (
-  run_id uuid,
-  employee_id text,
-  final_match_rate numeric,
-  created_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT talent_match_results_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(employee_id)
+
+CREATE TABLE public.dim_divisions (
+  division_id serial PRIMARY KEY,
+  name text NOT NULL
 );
+
+CREATE TABLE public.dim_grades (
+  grade_id serial PRIMARY KEY,
+  name text NOT NULL
+);
+
+CREATE TABLE public.dim_education (
+  education_id serial PRIMARY KEY,
+  name text NOT NULL
+);
+
+CREATE TABLE public.dim_competency_pillars (
+  pillar_code varchar PRIMARY KEY,
+  pillar_label text NOT NULL
+);
+
+-- Configuration tables for matching engine
 CREATE TABLE public.talent_variables_mapping (
-  tv_name text NOT NULL,
+  tv_code varchar PRIMARY KEY,
+  tv_name text,
+  tgv_code varchar,
   tgv_name text,
-  tv_weight numeric,
-  CONSTRAINT talent_variables_mapping_pkey PRIMARY KEY (tv_name)
+  weight numeric
 );
+
+CREATE TABLE public.talent_group_weights (
+  tgv_code varchar PRIMARY KEY,
+  tgv_name text,
+  weight numeric
+);
+```
+
+---
+
+## Key Relationships
+
+- Employees → Performance (1:N, yearly records)
+- Employees → Competencies (1:N, yearly × 10 pillars)
+- Employees → Psychometric Profile (1:1)
+- Employees → PAPI Scores (1:20, one per scale)
+- Employees → Strengths (1:5, top 5 strengths)
+- Employees → Dimensions (N:1, position, department, grade, etc.)
+
+## Notes
+
+- `employee_id` is text type to support flexible ID formats
+- Yearly data (performance, competencies) uses composite primary keys
+- All dimension tables use auto-incrementing integer IDs
+- Configuration tables support the matching algorithm's weighted scoring
+
+For job vacancy schema, see `job_vacancies_schema.sql`.
