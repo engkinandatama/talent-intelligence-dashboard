@@ -42,3 +42,5 @@ __pypackages__/
 *.seed
 *.coveragerc
 .tox/
+docs/
+analysis/
