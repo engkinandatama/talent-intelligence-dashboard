@@ -39,7 +39,7 @@ Comprehensive employee analytics:
 
 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/engkinandatama/talent-intelligence-dashboard.git
 cd talent-intelligence-dashboard
 ```
 
@@ -124,11 +124,3 @@ See `docs/SQL-scheme.md` for detailed schema.
 1. Select employee from dropdown
 2. View comprehensive analytics across multiple tabs
 3. Explore competency breakdowns and recommendations
-
-## License
-
-[Add your license here]
-
-## Contact
-
-[Add your contact information]
