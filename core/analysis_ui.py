@@ -121,7 +121,7 @@ def render_detailed_analysis(results_df, benchmark_ids, engine):
                 plot_bgcolor='rgba(0,0,0,0)'
             )
             
-            st.plotly_chart(fig_radar, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_radar, width="stretch", config={'displayModeBar': False})
         
         with col2:
             st.markdown("#### 💪 Strengths & Development Needs")
@@ -179,7 +179,7 @@ def render_detailed_analysis(results_df, benchmark_ids, engine):
                 )
             )
             
-            st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_bar, width="stretch", config={'displayModeBar': False})
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -237,7 +237,7 @@ def render_detailed_analysis(results_df, benchmark_ids, engine):
             )
         )
         
-        st.plotly_chart(fig_hist, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_hist, width="stretch", config={'displayModeBar': False})
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -293,7 +293,7 @@ def render_detailed_analysis(results_df, benchmark_ids, engine):
                         'status': 'Status'
                     },
                     hide_index=True,
-                    use_container_width=True
+                    width="stretch"
                 )
         
         #  Section 4: Export Functionality
@@ -310,7 +310,7 @@ def render_detailed_analysis(results_df, benchmark_ids, engine):
                 data=csv,
                 file_name=f"talent_comparison_{selected_employee_id}.csv",
                 mime="text/csv",
-                use_container_width=True
+                width="stretch"
             )
         
         with col2:
@@ -344,7 +344,7 @@ TGV BREAKDOWN:
                 data=summary_text,
                 file_name=f"talent_summary_{selected_employee_id}.txt",
                 mime="text/plain",
-                use_container_width=True
+                width="stretch"
             )
     
     except Exception as e:

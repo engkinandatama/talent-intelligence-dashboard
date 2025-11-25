@@ -29,7 +29,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎯 Talent Matching Engine")
-st.caption("Temukan talenta internal terbaik berdasarkan profil benchmark.")
+st.caption("Find the best internal talent based on benchmark profile.")
 
 engine = get_engine()
 
@@ -47,28 +47,28 @@ def load_all_dimensions():
 try:
     positions_df, employees_df, departments_df, divisions_df, grades_df = load_all_dimensions()
 except Exception as e:
-    st.error(f"Gagal memuat data filter dari database: {e}")
+    st.error(f"Failed to load filter data from database: {e}")
     st.stop()
 
 # --- UI Panel Filter (Desain baru sesuai permintaan yang direvisi) ---
 with st.container():
-    st.header("⚙️ Pengaturan Pencarian & Benchmark")
+    st.header("⚙️ Search & Benchmark Settings")
 
     # Bagian Benchmark (Wajib untuk Matching)
     # Gunakan get() untuk mencegah error jika session_state belum diinisialisasi
-    with st.expander("1. Mode Pencarian", expanded=st.session_state.get('expander_state', True)):
+    with st.expander("1. Search Mode", expanded=st.session_state.get('expander_state', True)):
         # Mode A: Multi-select karyawan dengan chips
         with st.container():
-            st.subheader("Mode A: Pilih Karyawan")
+            st.subheader("Mode A: Select Employees")
 
             # Siapkan daftar pilihan untuk multiselect
             employee_options = [f"{row.employee_id} — {row.fullname}" for _, row in employees_df.iterrows()]
 
             # Gunakan st.multiselect
             selected_employees_mode_a = st.multiselect(
-                "Pilih satu atau beberapa karyawan",
+                "Select one or more employees",
                 options=employee_options,
-                help="Ketik untuk mencari, lalu pilih karyawan. Setiap karyawan yang dipilih akan dianalisis kecocokannya terhadap semua posisi."
+                help="Type to search, then select employees. Each selected employee will be analyzed for position match."
             )
 
             # Ekstrak hanya employee_id dari hasil pilihan
@@ -96,33 +96,33 @@ with st.container():
 
                     with col1:
                         pos_map = dict(zip(positions_df['name'], positions_df['position_id']))
-                        # Ganti "(Tidak dipilih)" dengan "None" agar lebih jelas bahwa filter tidak aktif
-                        pos_options = ["(Tidak dipilih)"] + list(pos_map.keys())
-                        pos_name = st.selectbox("Pilih Posisi", pos_options, index=0)
-                        filter_position_id = pos_map.get(pos_name) if pos_name != "(Tidak dipilih)" else None
+                        # Ganti "(Not selected)" dengan "None" agar lebih jelas bahwa filter tidak aktif
+                        pos_options = ["(Not selected)"] + list(pos_map.keys())
+                        pos_name = st.selectbox("Select Position", pos_options, index=0)
+                        filter_position_id = pos_map.get(pos_name) if pos_name != "(Not selected)" else None
 
                     # Tampilkan filter departemen
                     with col2:
                         dep_map = dict(zip(departments_df['name'], departments_df['department_id']))
-                        dep_options = ["(Tidak dipilih)"] + list(dep_map.keys())
-                        dep_name = st.selectbox("Pilih Departemen", dep_options, index=0)
-                        filter_department_id = dep_map.get(dep_name) if dep_name != "(Tidak dipilih)" else None
+                        dep_options = ["(Not selected)"] + list(dep_map.keys())
+                        dep_name = st.selectbox("Select Department", dep_options, index=0)
+                        filter_department_id = dep_map.get(dep_name) if dep_name != "(Not selected)" else None
 
                     col3, col4 = st.columns(2)
 
                     # Tampilkan filter divisi
                     with col3:
                         div_map = dict(zip(divisions_df['name'], divisions_df['division_id']))
-                        div_options = ["(Tidak dipilih)"] + list(div_map.keys())
-                        div_name = st.selectbox("Pilih Divisi", div_options, index=0)
-                        filter_division_id = div_map.get(div_name) if div_name != "(Tidak dipilih)" else None
+                        div_options = ["(Not selected)"] + list(div_map.keys())
+                        div_name = st.selectbox("Select Division", div_options, index=0)
+                        filter_division_id = div_map.get(div_name) if div_name != "(Not selected)" else None
 
                     # Tampilkan filter grade
                     with col4:
                         grade_map = dict(zip(grades_df['name'], grades_df['grade_id']))
-                        grade_options = ["(Tidak dipilih)"] + list(grade_map.keys())
-                        grade_name = st.selectbox("Pilih Grade", grade_options, index=0)
-                        filter_grade_id = grade_map.get(grade_name) if grade_name != "(Tidak dipilih)" else None
+                        grade_options = ["(Not selected)"] + list(grade_map.keys())
+                        grade_name = st.selectbox("Select Grade", grade_options, index=0)
+                        filter_grade_id = grade_map.get(grade_name) if grade_name != "(Not selected)" else None
 
             # Buat dictionary filter
             filters = {}
@@ -139,22 +139,22 @@ with st.container():
 
         # Penjelasan untuk skenario
         st.divider()
-        st.markdown("**Penjelasan Mode:**")
+        st.markdown("**Mode Explanation:**")
 
         if manual_ids and not use_manual_as_benchmark:
             st.info(
                 "🟦 **Mode A – Position Recommendation**\n"
-                "Sistem akan menampilkan rekomendasi posisi terbaik untuk karyawan yang dipilih."
+                "The system will display the best position recommendations for selected employees."
             )
         elif manual_ids and use_manual_as_benchmark:
             st.success(
                 "🟩 **Manual Benchmark Active**\n"
-                "Karyawan terpilih digunakan sebagai baseline untuk membandingkan seluruh karyawan."
+                "Selected employees are used as baseline to compare all employees."
             )
         elif not manual_ids and filters:
             st.info(
                 "🟧 **Filter Benchmark Active**\n"
-                "Benchmark dibangun dari High Performers yang sesuai dengan filter Anda."
+                "Benchmark is built from High Performers matching your filters."
             )
         else:
             st.warning(
@@ -188,7 +188,7 @@ if 'editing_page_final' not in st.session_state:
     st.session_state.editing_page_final = False
 
 # --- Tombol Eksekusi ---
-run_button = st.button("🚀 Jalankan Talent Match", use_container_width=True, type="primary")
+run_button = st.button("🚀 Run Talent Match", width="stretch", type="primary")
 
 # Tutup expander setelah tombol ditekan
 if run_button:
@@ -200,16 +200,16 @@ if run_button:
     has_active_filters = bool(filters)  # Check if filters dictionary is not empty
 
     if not manual_ids and not has_active_filters:
-        st.warning("Harap tentukan karyawan (Mode A) atau pilih setidaknya satu filter (Mode B).")
+        st.warning("Please specify employees (Mode A) or select at least one filter (Mode B).")
     else:
         # Tentukan mode dan eksekusi pencarian
         if mode_a_active and not use_manual_as_benchmark:
             if not manual_ids:
-                st.error("Anda harus memilih minimal satu karyawan untuk Mode A.")
+                st.error("You must select at least one employee for Mode A.")
                 st.stop()
 
             # Tampilkan pesan sukses
-            st.success("Rekomendasi posisi berhasil dihitung.")
+            st.success("Position recommendations successfully calculated.")
 
             # Ambil nama karyawan untuk tampilan yang lebih baik
             with engine.connect() as conn:
@@ -220,13 +220,13 @@ if run_button:
 
             # Proses setiap karyawan secara individual
             for emp_id in manual_ids:
-                with st.spinner(f"Menghitung rekomendasi posisi untuk {emp_id}..."):
+                with st.spinner(f"Calculating position recommendations for {emp_id}..."):
                     # Validasi data karyawan terlebih dahulu
                     validate = validate_employee_data(emp_id, engine)
                     emp_name = emp_name_map.get(emp_id, emp_id)
 
                     if not validate["ok"]:
-                        st.error(f"⚠ Data untuk {emp_name} tidak lengkap. Missing: {', '.join(validate['missing'])}")
+                        st.error(f"⚠ Data for {emp_name} is incomplete. Missing: {', '.join(validate['missing'])}")
                         # Tambahkan informasi ke session state sebagai catatan
                         if 'search_results' not in st.session_state or st.session_state.search_results is None:
                             st.session_state.search_results = pd.DataFrame()
@@ -236,11 +236,11 @@ if run_button:
                     df_reco = get_match_for_single_person(engine, emp_id)
                     if not df_reco.empty:
                         # Tampilkan header dengan nama karyawan
-                        st.subheader(f"Rekomendasi Posisi untuk {emp_name}")
+                        st.subheader(f"Position Recommendations for {emp_name}")
 
                         # Tambahkan Top 3 Podium untuk posisi teratas
                         if not df_reco.empty:
-                            st.subheader("🏆 Rekomendasi Posisi Teratas")
+                            st.subheader("🏆 Top Position Recommendations")
 
                             # Ambil 3 posisi teratas
                             top_positions = df_reco.head(3).to_dict('records')
@@ -261,10 +261,10 @@ if run_button:
                                         rank_info = ranks.get(i)
                                         st.markdown(f"<h5 style='text-align: center; font-size: {rank_info['size']};'>{rank_info['title']}</h5>", unsafe_allow_html=True)
                                         st.markdown(f"<p style='text-align: center; font-weight: bold;'>{position.get('position_name', 'N/A')}</p>", unsafe_allow_html=True)
-                                        st.caption(f"Skor: {position['final_match_rate']:.2f}")
+                                        st.caption(f"Score: {position['final_match_rate']:.2f}")
                                         st.divider()
 
-                                        st.markdown(f"**Posisi Saat Ini:** {position.get('position_name', 'N/A')}")
+                                        st.markdown(f"**Current Position:** {position.get('position_name', 'N/A')}")
 
                                         # Tampilkan skor kecocokan
                                         st.metric("Match Score", f"{position['final_match_rate']:.2f}")
@@ -272,31 +272,20 @@ if run_button:
                             st.divider() # Tambahkan pemisah setelah podium
 
                         # Tampilkan tabel rekomendasi posisi untuk karyawan ini
-                        st.dataframe(df_reco, use_container_width=True)
+                        st.dataframe(df_reco, width="stretch")
 
-                        # Simpan hasil ke session state untuk setiap karyawan
+                        # Save results to session state for each employee
                         if 'search_results' not in st.session_state or st.session_state.search_results is None:
                             st.session_state.search_results = df_reco
                         else:
                             st.session_state.search_results = pd.concat([st.session_state.search_results, df_reco], ignore_index=True)
-
-                        st.divider()  # Pemisah antar karyawan
-                    else:
-                        emp_name = emp_name_map.get(emp_id, emp_id)
-                        if validate["ok"]:
-                            st.warning(f"Tidak ditemukan rekomendasi posisi untuk {emp_name}. "
-                                     f"Namun data lengkap. Kemungkinan tidak ada role mapping yang cocok.")
-                        else:
-                            st.warning(f"Tidak ditemukan rekomendasi posisi untuk karyawan {emp_id}.")
-
-            # Setelah semua karyawan diproses, atur session state
             if 'search_results' in st.session_state and st.session_state.search_results is not None and not st.session_state.search_results.empty:
                 st.session_state.current_page_a = 1  # Reset halaman ke 1 untuk Mode A
                 st.session_state.last_mode_used = 'A'  # Tandai bahwa ini adalah Mode A
         elif mode_a_active and use_manual_as_benchmark:
             # Mode A - Manual Benchmark
-            st.success("Ranking seluruh karyawan berdasarkan manual benchmark siap ditampilkan.")
-            with st.spinner("Menjalankan algoritma Talent Matching dengan manual benchmark..."):
+            st.success("Ranking of all employees based on manual benchmark is ready to display.")
+            with st.spinner("Running Talent Matching algorithm with manual benchmark..."):
                 try:
                     result_df = run_standard_match_query(
                         engine,
@@ -310,17 +299,17 @@ if run_button:
                         min_rating=min_rating
                     )
 
-                    # Simpan hasil ke session state dan reset halaman ke 1
+                    # Save results to session state and reset page to 1
                     st.session_state.search_results = result_df
                     st.session_state.current_page_b = 1  # Reset halaman ke 1 untuk Mode B
                     st.session_state.last_mode_used = 'B'  # Tandai bahwa ini adalah Mode B
 
-                    st.toast(f"✅ Perhitungan selesai! Ditemukan {len(result_df)} karyawan.", icon="🎉")
-                    st.subheader("📊 Peringkat Kecocokan Talenta (Manual Benchmark)")
+                    st.toast(f"✅ Calculation complete! Found {len(result_df)} employees.", icon="🎉")
+                    st.subheader("📊 Talent Match Ranking (Manual Benchmark)")
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Podium Kecocokan Teratas")
+                        st.subheader("🏆 Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -344,7 +333,7 @@ if run_button:
                                     st.caption(f"ID: {candidate['employee_id']}")
                                     st.divider()
 
-                                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+                                    st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                                     # Menampilkan konteks benchmark
                                     benchmark_context = "Manual Benchmark"
@@ -356,7 +345,7 @@ if run_button:
 
                     # Implementasi pagination baru
                     if result_df.empty:
-                        st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                        st.warning("No candidates match the criteria.")
                     else:
                         # --- Implementasi Pagination Baru ---
                         items_per_page = 100  # Ganti dari 20 ke 100
@@ -373,7 +362,7 @@ if run_button:
                         paginated_df = result_df.iloc[start_idx:end_idx]
 
                         # Tampilkan tabel yang sudah dipaginasi
-                        st.dataframe(paginated_df, use_container_width=True)
+                        st.dataframe(paginated_df, width="stretch")
 
                         # Gunakan 3 kolom untuk menempatkan pagination di tengah
                         _, mid_col, _ = st.columns([.3, .4, .3])
@@ -384,7 +373,7 @@ if run_button:
 
                             with col1:
                                 # Tombol "Sebelumnya"
-                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b <= 1)):
+                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b <= 1)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b > 1:
                                         st.session_state.current_page_b -= 1
@@ -415,13 +404,13 @@ if run_button:
                                     )
                                 else:
                                     # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
-                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", use_container_width=True):
+                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", width="stretch"):
                                         st.session_state.editing_page_b = True
-                                        st.rerun() # Jalankan ulang untuk menampilkan text_input
+                                        st.rerun() # Rerun to display text_input
 
                             with col3:
                                 # Tombol "Berikutnya"
-                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b >= total_pages)):
+                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b >= total_pages)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b < total_pages:
                                         st.session_state.current_page_b += 1
@@ -467,8 +456,8 @@ if run_button:
                     st.exception(e)
         elif not mode_a_active and has_active_filters:
             # Mode B - Filter Benchmark
-            st.success("Benchmark berdasarkan filter berhasil digunakan untuk menghitung ranking.")
-            with st.spinner("Menjalankan algoritma Talent Matching dengan filter benchmark..."):
+            st.success("Filter-based benchmark successfully used for ranking calculation.")
+            with st.spinner("Running Talent Matching algorithm with filter benchmark..."):
                 try:
                     result_df = run_standard_match_query(
                         engine,
@@ -482,21 +471,21 @@ if run_button:
                         min_rating=min_rating
                     )
 
-                    # Simpan hasil ke session state dan reset halaman ke 1
+                    # Save results to session state and reset page to 1
                     st.session_state.search_results = result_df
                     st.session_state.current_page_b = 1  # Reset halaman ke 1 untuk Mode B
                     st.session_state.last_mode_used = 'B'  # Tandai bahwa ini adalah Mode B
 
                     # Cek jika hasil kosong
                     if result_df.empty:
-                        st.warning("Tidak ada High Performers yang cocok dengan filter Anda.")
+                        st.warning("No High Performers match your filters.")
 
-                    st.toast(f"✅ Perhitungan selesai! Ditemukan {len(result_df)} karyawan.", icon="🎉")
-                    st.subheader("📊 Peringkat Kecocokan Talenta (Filter Benchmark)")
+                    st.toast(f"✅ Calculation complete! Found {len(result_df)} employees.", icon="🎉")
+                    st.subheader("📊 Talent Match Ranking (Filter Benchmark)")
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Podium Kecocokan Teratas")
+                        st.subheader("🏆 Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -520,7 +509,7 @@ if run_button:
                                     st.caption(f"ID: {candidate['employee_id']}")
                                     st.divider()
 
-                                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+                                    st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                                     # Menampilkan konteks benchmark
                                     benchmark_context = "Filter Benchmark"
@@ -532,7 +521,7 @@ if run_button:
 
                     # Implementasi pagination baru
                     if result_df.empty:
-                        st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                        st.warning("No candidates match the criteria.")
                     else:
                         # --- Implementasi Pagination Baru ---
                         items_per_page = 100  # Ganti dari 20 ke 100
@@ -549,7 +538,7 @@ if run_button:
                         paginated_df = result_df.iloc[start_idx:end_idx]
 
                         # Tampilkan tabel yang sudah dipaginasi
-                        st.dataframe(paginated_df, use_container_width=True)
+                        st.dataframe(paginated_df, width="stretch")
 
                         # Gunakan 3 kolom untuk menempatkan pagination di tengah
                         _, mid_col, _ = st.columns([.3, .4, .3])
@@ -560,7 +549,7 @@ if run_button:
 
                             with col1:
                                 # Tombol "Sebelumnya"
-                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b <= 1)):
+                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b <= 1)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b > 1:
                                         st.session_state.current_page_b -= 1
@@ -591,13 +580,13 @@ if run_button:
                                     )
                                 else:
                                     # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
-                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", use_container_width=True):
+                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", width="stretch"):
                                         st.session_state.editing_page_b = True
-                                        st.rerun() # Jalankan ulang untuk menampilkan text_input
+                                        st.rerun() # Rerun to display text_input
 
                             with col3:
                                 # Tombol "Berikutnya"
-                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b >= total_pages)):
+                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b >= total_pages)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b < total_pages:
                                         st.session_state.current_page_b += 1
@@ -643,8 +632,8 @@ if run_button:
                     st.exception(e)
         elif not mode_a_active and not has_active_filters:
             # Mode Default - Benchmark default (HP rating >= 5)
-            st.info("Default benchmark digunakan (High Performers rating ≥5).")
-            with st.spinner("Menjalankan algoritma Talent Matching dengan benchmark default..."):
+            st.info("Default benchmark used (High Performers rating ≥5).")
+            with st.spinner("Running Talent Matching algorithm with default benchmark..."):
                 try:
                     result_df = run_standard_match_query(
                         engine,
@@ -658,17 +647,17 @@ if run_button:
                         min_rating=min_rating
                     )
 
-                    # Simpan hasil ke session state dan reset halaman ke 1
+                    # Save results to session state and reset page to 1
                     st.session_state.search_results = result_df
                     st.session_state.current_page_b = 1  # Reset halaman ke 1 untuk Mode B
                     st.session_state.last_mode_used = 'B'  # Tandai bahwa ini adalah Mode B
 
-                    st.toast(f"✅ Perhitungan selesai! Ditemukan {len(result_df)} karyawan.", icon="🎉")
-                    st.subheader("📊 Peringkat Kecocokan Talenta (Default Benchmark)")
+                    st.toast(f"✅ Calculation complete! Found {len(result_df)} employees.", icon="🎉")
+                    st.subheader("📊 Talent Match Ranking (Default Benchmark)")
 
                     # Tambahkan Top 3 Podium
                     if not result_df.empty:
-                        st.subheader("🏆 Podium Kecocokan Teratas")
+                        st.subheader("🏆 Top Match Podium")
 
                         # Ambil 3 kandidat teratas
                         top_candidates = result_df.head(3).to_dict('records')
@@ -692,7 +681,7 @@ if run_button:
                                     st.caption(f"ID: {candidate['employee_id']}")
                                     st.divider()
 
-                                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+                                    st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                                     # Menampilkan konteks benchmark
                                     benchmark_context = "Default Benchmark (HP rating = 5)"
@@ -704,7 +693,7 @@ if run_button:
 
                     # Implementasi pagination baru
                     if result_df.empty:
-                        st.warning("Tidak ada kandidat yang cocok dengan kriteria.")
+                        st.warning("No candidates match the criteria.")
                     else:
                         # --- Implementasi Pagination Baru ---
                         items_per_page = 100  # Ganti dari 20 ke 100
@@ -721,7 +710,7 @@ if run_button:
                         paginated_df = result_df.iloc[start_idx:end_idx]
 
                         # Tampilkan tabel yang sudah dipaginasi
-                        st.dataframe(paginated_df, use_container_width=True)
+                        st.dataframe(paginated_df, width="stretch")
 
                         st.divider()
 
@@ -734,7 +723,7 @@ if run_button:
 
                             with col1:
                                 # Tombol "Sebelumnya"
-                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b <= 1)):
+                                if st.button("◀", key=f"prev_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b <= 1)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b > 1:
                                         st.session_state.current_page_b -= 1
@@ -765,13 +754,13 @@ if run_button:
                                     )
                                 else:
                                     # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
-                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", use_container_width=True):
+                                    if st.button(f"{st.session_state.current_page_b} / {total_pages}", key=f"page_display_button_b_{st.session_state.current_page_b}", width="stretch"):
                                         st.session_state.editing_page_b = True
-                                        st.rerun() # Jalankan ulang untuk menampilkan text_input
+                                        st.rerun() # Rerun to display text_input
 
                             with col3:
                                 # Tombol "Berikutnya"
-                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", use_container_width=True, disabled=(st.session_state.current_page_b >= total_pages)):
+                                if st.button("▶", key=f"next_page_b_{st.session_state.current_page_b}", width="stretch", disabled=(st.session_state.current_page_b >= total_pages)):
                                     st.session_state.editing_page_b = False # Keluar dari mode edit jika ada
                                     if st.session_state.current_page_b < total_pages:
                                         st.session_state.current_page_b += 1
@@ -813,19 +802,19 @@ if run_button:
             </style>
             """, unsafe_allow_html=True)
                 except Exception as e:
-                    st.error("Terjadi kesalahan saat menjalankan query.")
+                    st.error("An error occurred while running query.")
                     st.exception(e)
 else:
-    st.info("Atur Mode A atau Mode B di atas, lalu klik 'Jalankan Talent Match'.")
+    st.info("Set Mode A or Mode B above, then click 'Run Talent Match'.")
 
 # Tampilkan hasil dari session state jika sudah ada (untuk menjaga hasil saat berpindah halaman)
 # Ini akan aktif saat run_button tidak diklik tapi hasil sebelumnya masih ada di session_state
 if not run_button and 'search_results' in st.session_state and st.session_state.search_results is not None and not st.session_state.search_results.empty:
-    st.subheader("📊 Peringkat Kecocokan Talenta (Hasil Tersimpan)")
+    st.subheader("📊 Talent Match Ranking (Saved Results)")
 
     # Tambahkan Top 3 Podium
     if not st.session_state.search_results.empty:
-        st.subheader("🏆 Podium Kecocokan Teratas")
+        st.subheader("🏆 Top Match Podium")
 
         # Ambil 3 kandidat teratas
         top_candidates = st.session_state.search_results.head(3).to_dict('records')
@@ -849,7 +838,7 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
                     st.caption(f"ID: {candidate['employee_id']}")
                     st.divider()
 
-                    st.markdown(f"**Posisi Saat Ini:** {candidate.get('position_name', 'N/A')}")
+                    st.markdown(f"**Current Position:** {candidate.get('position_name', 'N/A')}")
 
                     # Menampilkan konteks benchmark
                     benchmark_context = "Default" # Fallback
@@ -889,7 +878,7 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
     paginated_df = current_result_df.iloc[start_idx:end_idx]
 
     # Tampilkan tabel yang sudah dipaginasi
-    st.dataframe(paginated_df, use_container_width=True)
+    st.dataframe(paginated_df, width="stretch")
 
     # Tampilan navigasi dan informasi halaman (baru - dengan desain minimalis)
     st.divider()
@@ -903,7 +892,7 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
 
         with col1:
             # Tombol "Sebelumnya"
-            if st.button("◀", key=f"prev_page_final_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] <= 1)):
+            if st.button("◀", key=f"prev_page_final_{st.session_state[mode_key]}", width="stretch", disabled=(st.session_state[mode_key] <= 1)):
                 st.session_state.editing_page_final = False # Keluar dari mode edit jika ada
                 if st.session_state[mode_key] > 1:
                     st.session_state[mode_key] -= 1
@@ -934,13 +923,13 @@ if not run_button and 'search_results' in st.session_state and st.session_state.
                 )
             else:
                 # Tampilkan teks yang bisa diklik untuk masuk ke mode edit
-                if st.button(f"{st.session_state[mode_key]} / {total_pages}", key=f"page_display_button_final_{st.session_state[mode_key]}", use_container_width=True):
+                if st.button(f"{st.session_state[mode_key]} / {total_pages}", key=f"page_display_button_final_{st.session_state[mode_key]}", width="stretch"):
                     st.session_state.editing_page_final = True
-                    st.rerun() # Jalankan ulang untuk menampilkan text_input
+                    st.rerun() # Rerun to display text_input
 
         with col3:
             # Tombol "Berikutnya"
-            if st.button("▶", key=f"next_page_final_{st.session_state[mode_key]}", use_container_width=True, disabled=(st.session_state[mode_key] >= total_pages)):
+            if st.button("▶", key=f"next_page_final_{st.session_state[mode_key]}", width="stretch", disabled=(st.session_state[mode_key] >= total_pages)):
                 st.session_state.editing_page_final = False # Keluar dari mode edit jika ada
                 if st.session_state[mode_key] < total_pages:
                     st.session_state[mode_key] += 1
@@ -1004,3 +993,11 @@ if 'search_results' in st.session_state and st.session_state.search_results is n
             )
         except Exception as analysis_error:
             st.warning(f"Detailed analysis unavailable: {str(analysis_error)}")
+
+# Footer
+st.markdown('<br>', unsafe_allow_html=True)
+st.markdown("""
+<div style='text-align: center; color: #6B7B94; padding: 2rem 0;'>
+    <small>Talent Intelligence Dashboard © 2025. All rights reserved.</small>
+</div>
+""", unsafe_allow_html=True)

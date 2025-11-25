@@ -496,8 +496,12 @@ with col_bottom1:
     st.markdown('<div class="section-title">🏆 Top Strengths</div>', unsafe_allow_html=True)
     
     if not profile['strengths'].empty:
+        # Create single HTML block with all badges
+        badges_html = '<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">'
         for _, strength in profile['strengths'].iterrows():
-            st.markdown(f'<span class="badge">#{strength["rank"]} {strength["theme"]}</span>', unsafe_allow_html=True)
+            badges_html += f'<span class="badge">#{strength["rank"]} {strength["theme"]}</span>'
+        badges_html += '</div>'
+        st.markdown(badges_html, unsafe_allow_html=True)
     else:
         st.info("No strengths data available")
     
@@ -637,7 +641,9 @@ with tab2:
                 title=dict(text="Year", font=dict(size=12, color='#8B9DB8')),
                 tickfont=dict(size=11, color='#8B9DB8'),
                 showgrid=True,
-                gridcolor='rgba(139, 157, 184, 0.1)'
+                gridcolor='rgba(139, 157, 184, 0.1)',
+                dtick=1,  # Force 1 year intervals
+                tickformat='d'  # Integer format (no decimals)
             ),
             yaxis=dict(
                 title=dict(text="Performance Rating", font=dict(size=12, color='#8B9DB8')),
@@ -682,7 +688,7 @@ with tab3:
         all_tvs.append({
             'TGV': 'COMPETENCY',
             'Variable': row['pillar_label'],
-            'Score': row['score'],
+            'Score': f"{row['score']:.2f}",  # Convert to string
             'Type': 'Numeric'
         })
     
@@ -693,7 +699,7 @@ with tab3:
                 all_tvs.append({
                     'TGV': 'COGNITIVE',
                     'Variable': col.upper(),
-                    'Score': profile['cognitive'][col],
+                    'Score': f"{profile['cognitive'][col]:.2f}",  # Convert to string
                     'Type': 'Numeric'
                 })
     
@@ -703,7 +709,7 @@ with tab3:
             all_tvs.append({
                 'TGV': 'WORK_STYLE',
                 'Variable': f"PAPI-{row['scale_code']}",
-                'Score': row['score'],
+                'Score': f"{row['score']:.2f}",  # Convert to string
                 'Type': 'Numeric'
             })
     
@@ -740,7 +746,7 @@ with tab3:
             column_config={
                 'TGV': st.column_config.TextColumn('Group', width='medium'),
                 'Variable': st.column_config.TextColumn('Talent Variable', width='large'),
-                'Score': st.column_config.NumberColumn('Score / Value', format="%.2f"),
+                'Score': st.column_config.TextColumn('Score / Value', width='medium'),  # Changed to TextColumn
                 'Type': st.column_config.TextColumn('Type', width='small')
             },
             hide_index=True,
@@ -772,7 +778,7 @@ with tab4:
     
     # Career stats
     st.markdown("#### 📊 Career Statistics")
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.metric("🕒 Total Experience", f"{exp_years:.1f} years")
@@ -781,28 +787,6 @@ with tab4:
         st.metric("📅 Time in Current Role", f"{years_since_promotion:.1f} years")
     with col3:
         st.metric("🎓 Education", profile['basic']['education_name'])
-    with col4:
-        promotions = int(exp_years / 3)  # Placeholder
-        st.metric("⬆️ Promotions Received", f"{promotions}")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Career progression visualization
-    st.markdown("#### 📈 Career Progression Path")
-    st.info("💡 **Note:** Detailed position history is not available in current database schema. This shows projected career path based on current grade.")
-    
-    # Simple timeline visualization
-    grades = ["G1", "G2", "G3", "G4", "G5", "G6"]
-    current_grade_idx = grades.index(profile['basic']['grade_name']) if profile['basic']['grade_name'] in grades else 2
-    
-    progress_html = ""
-    for i, grade in enumerate(grades):
-        if i <= current_grade_idx:
-            progress_html += f'<span class="badge" style="background: linear-gradient(135deg, #51CF66, #4A90E2);">{grade} ✓</span> '
-        else:
-            progress_html += f'<span class="badge" style="background: rgba(139, 157, 184, 0.3); color: #6B7B94;">{grade}</span> '
-    
-    st.markdown(progress_html, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -881,6 +865,6 @@ with tab5:
 st.markdown('<br>', unsafe_allow_html=True)
 st.markdown("""
 <div style='text-align: center; color: #6B7B94; padding: 2rem 0;'>
-    <small>🎮 RPG-Style Employee Profile • Talent Intelligence Dashboard</small>
+    <small>Talent Intelligence Dashboard © 2025. All rights reserved.</small>
 </div>
 """, unsafe_allow_html=True)

@@ -292,12 +292,12 @@ if st.session_state.generated_profile:
     with col1:
         st.button(
             "✏️ Edit Profile" if not st.session_state.edit_mode else "❌ Cancel Edit",
-            use_container_width=True,
+            width="stretch",
             on_click=toggle_edit_mode
         )
     
     with col2:
-        save_btn_top = st.button("💾 Save to Database", type="primary", use_container_width=True, key="save_top")
+        save_btn_top = st.button("💾 Save to Database", type="primary", width="stretch", key="save_top")
 
     if st.session_state.edit_mode:
         # --- EDIT MODE ---
@@ -350,7 +350,7 @@ if st.session_state.generated_profile:
                 help="Format: Competency Name: Description"
             )
 
-            submitted = st.form_submit_button("💾 Simpan Perubahan", type="primary")
+            submitted = st.form_submit_button("💾 Save Changes", type="primary")
             if submitted:
                 # Update session state with edited data
                 st.session_state.generated_profile['role_purpose'] = edited_role_purpose
@@ -507,7 +507,7 @@ REQUIRED OUTPUT (JSON format):
             data=json.dumps(job_data, indent=2),
             file_name=f"{job_data.get('position_name', 'job')}_profile.json",
             mime="application/json",
-            use_container_width=True
+            width="stretch"
         )
         
     with col_exp2:
@@ -516,7 +516,7 @@ REQUIRED OUTPUT (JSON format):
             data=format_as_text(job_data),
             file_name=f"{job_data.get('position_name', 'job')}_profile.txt",
             mime="text/plain",
-            use_container_width=True
+            width="stretch"
         )
         
     with col_exp3:
@@ -525,11 +525,11 @@ REQUIRED OUTPUT (JSON format):
             data=format_as_markdown(job_data),
             file_name=f"{job_data.get('position_name', 'job')}_profile.md",
             mime="text/markdown",
-            use_container_width=True
+            width="stretch"
         )
 
     # Save button logic (handles both top and bottom buttons)
-    if save_btn_top or st.button("💾 Simpan ke Database", type="primary", use_container_width=True, key="save_bottom"):
+    if save_btn_top or st.button("💾 Save to Database", type="primary", width="stretch", key="save_bottom"):
         try:
             # Get the current data from session state (may have been edited in View mode)
             current_profile = st.session_state.generated_profile
@@ -556,14 +556,14 @@ REQUIRED OUTPUT (JSON format):
             )
 
             if vacancy_id:
-                st.toast(f"✅ Lowongan (ID: {vacancy_id}) berhasil disimpan!", icon="🎉")
+                st.toast(f"✅ Vacancy (ID: {vacancy_id}) successfully saved!", icon="🎉")
                 # Store vacancy_id for talent matching link - FEATURE 1
                 st.session_state.last_saved_vacancy_id = vacancy_id
                 st.session_state.show_reset_button = True
             else:
-                st.error("❌ Gagal menyimpan lowongan ke database")
+                st.error("❌ Failed to save vacancy to database")
         except Exception as e:
-            st.error(f"Gagal menyimpan ke database: {str(e)}")
+            st.error(f"Failed to save to database: {str(e)}")
 
     # Show action buttons if save was successful - FEATURE 1
     if 'show_reset_button' in st.session_state and st.session_state.show_reset_button:
@@ -573,7 +573,7 @@ REQUIRED OUTPUT (JSON format):
         
         with col_action1:
             # Link to Talent Matching - FEATURE 1
-            if st.button("🎯 Find Matching Talents", type="primary", use_container_width=True):
+            if st.button("🎯 Find Matching Talents", type="primary", width="stretch"):
                 # Store vacancy info for talent matching page
                 if 'last_saved_vacancy_id' in st.session_state:
                     st.session_state.talent_match_vacancy_id = st.session_state.last_saved_vacancy_id
@@ -581,7 +581,202 @@ REQUIRED OUTPUT (JSON format):
                 st.switch_page("pages/1_Talent_Matching.py")
         
         with col_action2:
-            if st.button("📝 Create Another Job", type="secondary", use_container_width=True):
+            if st.button("📝 Create Another Job", type="secondary", width="stretch"):
+                # Clear the session state to reset the form
+                del st.session_state.generated_profile
+                del st.session_state.show_reset_button
+                if 'edit_mode' in st.session_state:
+                    del st.session_state.edit_mode
+                if 'last_saved_vacancy_id' in st.session_state:
+                    del st.session_state.last_saved_vacancy_id
+                st.rerun()
+            qualifications = job_data.get("qualifications", {})
+            
+            if isinstance(qualifications, dict):
+                st.markdown(f"**📚 Education:** {qualifications.get('education', 'N/A')}")
+                st.markdown(f"**💼 Experience:** {qualifications.get('experience', 'N/A')}")
+                
+                st.markdown("**🛠️ Key Skills:**")
+                skills = qualifications.get('skills', [])
+                if skills:
+                    # Display skills as tags/pills
+                    st.markdown(" ".join([f"`{skill}`" for skill in skills]))
+                else:
+                    st.markdown("_No specific skills listed_")
+            else:
+                # Fallback for old format
+                st.write(qualifications)
+        
+        # Required Competencies (Structured Table View) - FEATURE 2
+        with st.expander("💪 Required Competencies", expanded=True):
+            competencies = job_data.get("required_competencies", [])
+            if competencies:
+                # Display in structured table format
+                st.markdown("**Competency Requirements:**")
+                
+                # Create a structured table
+                comp_data = []
+                for comp in competencies:
+                    if isinstance(comp, dict):
+                        comp_data.append({
+                            "Competency": comp.get('name', 'Unknown'),
+                            "Application Context": comp.get('description', 'N/A')
+                        })
+                    else:
+                        comp_data.append({
+                            "Competency": str(comp),
+                            "Application Context": "N/A"
+                        })
+                
+                if comp_data:
+                    # Display as formatted table
+                    for idx, comp in enumerate(comp_data, 1):
+                        st.markdown(f"**{idx}. {comp['Competency']}**")
+                        st.markdown(f"   └─ *{comp['Application Context']}*")
+                        if idx < len(comp_data):
+                            st.markdown("")
+            else:
+                st.info("No competencies defined")
+
+    # --- PHASE 3: REVISION & EXPORT ---
+    st.divider()
+    
+    # 1. Revision Workflow
+    with st.expander("🛠️ Request Revisions / Refine"):
+        st.info("Want to adjust the output? Tell the AI what to change.")
+        refinement_instructions = st.text_area(
+            "Instructions for AI",
+            placeholder="e.g., Make the tone more senior, emphasize leadership skills, remove the requirement for X..."
+        )
+        if st.button("🔄 Refine with AI"):
+            if not refinement_instructions:
+                st.warning("Please enter instructions first.")
+            else:
+                with st.spinner("Refining job profile..."):
+                    try:
+                        # Configure API
+                        api_key = st.secrets["GEMINI_API_KEY"]
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+                        
+                        # Create refinement prompt
+                        refinement_prompt = f"""
+You are an expert HR consultant.
+TASK: Refine the following job description based on user feedback.
+
+CURRENT PROFILE (JSON):
+{json.dumps(job_data)}
+
+USER FEEDBACK:
+"{refinement_instructions}"
+
+INSTRUCTIONS:
+1. Apply the user's feedback strictly.
+2. Maintain the same JSON structure.
+3. Keep the "Concise, Punchy, Direct" tone.
+
+REQUIRED OUTPUT (JSON format):
+(Same structure as before)
+"""
+                        response = model.generate_content(refinement_prompt)
+                        content = response.text.strip()
+                        if content.startswith("```json"):
+                            content = content[7:]
+                        if content.endswith("```"):
+                            content = content[:-3]
+                            
+                        new_job_data = json.loads(content)
+                        st.session_state.generated_profile = new_job_data
+                        st.toast("✅ Profile refined successfully!", icon="✨")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Refinement failed: {str(e)}")
+
+    # 2. Export Functionality
+    st.markdown("### 📥 Export Options")
+    col_exp1, col_exp2, col_exp3 = st.columns(3)
+    
+    with col_exp1:
+        st.download_button(
+            label="📄 Download JSON",
+            data=json.dumps(job_data, indent=2),
+            file_name=f"{job_data.get('position_name', 'job')}_profile.json",
+            mime="application/json",
+            width="stretch"
+        )
+        
+    with col_exp2:
+        st.download_button(
+            label="📝 Download Text",
+            data=format_as_text(job_data),
+            file_name=f"{job_data.get('position_name', 'job')}_profile.txt",
+            mime="text/plain",
+            width="stretch"
+        )
+        
+    with col_exp3:
+        st.download_button(
+            label="📑 Download Markdown",
+            data=format_as_markdown(job_data),
+            file_name=f"{job_data.get('position_name', 'job')}_profile.md",
+            mime="text/markdown",
+            width="stretch"
+        )
+
+    # Save button logic (handles both top and bottom buttons)
+    if save_btn_top or st.button("💾 Save to Database", type="primary", width="stretch", key="save_bottom"):
+        try:
+            # Get the current data from session state (may have been edited in View mode)
+            current_profile = st.session_state.generated_profile
+            
+            # Use the current values from the profile
+            vacancy_data = {
+                "role_name": role_name,
+                "job_level": job_level,
+                "role_purpose": current_profile.get('role_purpose', ''),
+                "key_responsibilities": current_profile.get('key_responsibilities', []),
+                "qualifications": current_profile.get('qualifications', {}), 
+                "required_competencies": current_profile.get('required_competencies', []),
+                "success_metrics": []
+            }
+            
+            vacancy_id = save_job_vacancy(
+                role_name=vacancy_data["role_name"],
+                job_level=vacancy_data["job_level"],
+                role_purpose=vacancy_data["role_purpose"],
+                key_responsibilities=vacancy_data["key_responsibilities"],
+                qualifications=vacancy_data["qualifications"], 
+                required_competencies=vacancy_data["required_competencies"],
+                success_metrics=vacancy_data["success_metrics"]
+            )
+
+            if vacancy_id:
+                st.toast(f"✅ Vacancy (ID: {vacancy_id}) successfully saved!", icon="🎉")
+                # Store vacancy_id for talent matching link - FEATURE 1
+                st.session_state.last_saved_vacancy_id = vacancy_id
+                st.session_state.show_reset_button = True
+            else:
+                st.error("❌ Failed to save vacancy to database")
+        except Exception as e:
+            st.error(f"Failed to save to database: {str(e)}")
+
+    # Show action buttons if save was successful - FEATURE 1
+    if 'show_reset_button' in st.session_state and st.session_state.show_reset_button:
+        st.success("✅ Job vacancy saved successfully!")
+        
+        col_action1, col_action2 = st.columns(2)
+        
+        with col_action1:
+            # Link to Talent Matching - FEATURE 1
+            if st.button("🎯 Find Matching Talents", type="primary", width="stretch"):
+                # Store vacancy info for talent matching page
+                if 'last_saved_vacancy_id' in st.session_state:
+                    st.session_state.talent_match_vacancy_id = st.session_state.last_saved_vacancy_id
+                    st.session_state.talent_match_role_name = role_name
+                st.switch_page("pages/1_Talent_Matching.py")
+        
+        with col_action2:
+            if st.button("📝 Create Another Job", type="secondary", width="stretch"):
                 # Clear the session state to reset the form
                 del st.session_state.generated_profile
                 del st.session_state.show_reset_button
@@ -601,6 +796,14 @@ with st.expander("📋 Instructions"):
     5. Review and edit the generated content as needed
     6. Use "Request Revisions" to refine the content with AI
     7. Download the profile in your preferred format
-    8. Click "Simpan ke Database" to save the job description in the database
+    8. Click "Save to Database" to save the job description in the database
     9. After saving, click "Find Matching Talents" to find candidates
     """)
+
+# Footer
+st.markdown('<br>', unsafe_allow_html=True)
+st.markdown("""
+<div style='text-align: center; color: #6B7B94; padding: 2rem 0;'>
+    <small>Talent Intelligence Dashboard © 2025. All rights reserved.</small>
+</div>
+""", unsafe_allow_html=True)

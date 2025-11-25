@@ -335,7 +335,7 @@ try:
             font=dict(family='Inter, sans-serif')
         )
         
-        st.plotly_chart(fig_perf, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_perf, width="stretch", config={'displayModeBar': False})
         st.markdown("<br>", unsafe_allow_html=True)
     
     with col2:
@@ -392,7 +392,7 @@ try:
             font=dict(family='Inter, sans-serif')
         )
         
-        st.plotly_chart(fig_tgv, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_tgv, width="stretch", config={'displayModeBar': False})
         st.markdown("<br>", unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -487,7 +487,7 @@ try:
             font=dict(family='Inter, sans-serif')
         )
         
-        st.plotly_chart(fig_comp, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig_comp, width="stretch", config={'displayModeBar': False})
         st.markdown('</div>', unsafe_allow_html=True)
     
     # ========================================================================
@@ -509,3 +509,11 @@ except Exception as e:
             st.rerun()
         else:
             st.error("❌ Failed")
+
+# Footer
+st.markdown('<br>', unsafe_allow_html=True)
+st.markdown("""
+<div style='text-align: center; color: #6B7B94; padding: 2rem 0;'>
+    <small>Talent Intelligence Dashboard © 2025. All rights reserved.</small>
+</div>
+""", unsafe_allow_html=True)
