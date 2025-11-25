@@ -2,6 +2,8 @@
 
 A modern HR analytics dashboard built with Streamlit for talent matching, job profile generation, and employee analytics.
 
+![Talent Intelligence Dashboard](img/dashboard/app-dashboard.png)
+
 ## Features
 
 ### 1. Talent Matching Engine
@@ -11,6 +13,8 @@ Match employees to job positions using competency-based algorithms. Supports mul
 - Filter-based talent search
 - High performer profiling
 
+![Talent Matching Preview](img/dashboard/Talent-Matching-·-preview.png)
+
 ### 2. AI Job Generator
 Generate professional job descriptions using AI:
 - Role purpose & responsibilities
@@ -18,6 +22,8 @@ Generate professional job descriptions using AI:
 - Competency requirements with context
 - Export to JSON, text, or markdown
 - AI-powered refinement
+
+![AI Job Generator Preview](img/dashboard/AI-Job-Generator-·-preview.png)
 
 ### 3. Employee Profile Viewer
 Comprehensive employee analytics:
@@ -90,8 +96,10 @@ talent-intelligence-dashboard/
 ├── scripts/
 │   ├── db_tools.py             # Manual DB connection utility
 │   └── test_dashboard.py       # Comprehensive test suite
-└── docs/                       # Documentation & reports
-
+├── docs/
+│   ├── report/                 # Final PDF Reports (Step 1, 2, 3)
+│   └── .md/                    # Markdown report sources
+└── img/                        # Project images & assets
 ```
 
 ## Matching Algorithm
