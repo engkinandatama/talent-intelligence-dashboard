@@ -161,7 +161,9 @@ def load_dashboard_data():
             """SELECT 
                 COUNT(DISTINCT employee_id) as hp_count,
                 COUNT(DISTINCT employee_id) * 100.0 / (SELECT COUNT(*) FROM employees) as hp_pct
-            FROM performance_yearly WHERE rating = 5""", conn
+            FROM performance_yearly 
+            WHERE rating = 5 
+            AND year = (SELECT MAX(year) FROM performance_yearly)""", conn
         )
         
         perf_dist = pd.read_sql(
@@ -175,8 +177,10 @@ def load_dashboard_data():
             """SELECT cp.pillar_label, AVG(cy.score) as avg_score
             FROM competencies_yearly cy
             JOIN dim_competency_pillars cp ON cy.pillar_code = cp.pillar_code
-            JOIN performance_yearly py ON cy.employee_id = py.employee_id
-            WHERE py.rating = 5 AND cy.year = (SELECT MAX(year) FROM competencies_yearly)
+            JOIN performance_yearly py ON cy.employee_id = py.employee_id 
+                AND py.year = cy.year
+            WHERE py.rating = 5 
+            AND cy.year = (SELECT MAX(year) FROM competencies_yearly)
             GROUP BY cp.pillar_label ORDER BY avg_score DESC LIMIT 5""", conn
         )
         
@@ -185,7 +189,8 @@ def load_dashboard_data():
                 AVG(CASE WHEN py.rating = 5 THEN cy.score END) as hp_avg,
                 AVG(CASE WHEN py.rating < 5 THEN cy.score END) as non_hp_avg
             FROM competencies_yearly cy
-            JOIN performance_yearly py ON cy.employee_id = py.employee_id
+            JOIN performance_yearly py ON cy.employee_id = py.employee_id 
+                AND py.year = cy.year
             WHERE cy.year = (SELECT MAX(year) FROM competencies_yearly)""", conn
         )
         
@@ -196,12 +201,16 @@ def load_dashboard_data():
             FROM profiles_psych pp
             JOIN employees e ON pp.employee_id = e.employee_id
             JOIN performance_yearly py ON e.employee_id = py.employee_id
-            WHERE pp.iq IS NOT NULL""", conn
+            WHERE pp.iq IS NOT NULL
+            AND py.year = (SELECT MAX(year) FROM performance_yearly)""", conn
         )
         
         position_count = pd.read_sql(
             "SELECT COUNT(DISTINCT position_id) as count FROM employees WHERE position_id IS NOT NULL", conn
         ).iloc[0]['count']
+
+        # Fetch dynamic weights
+        tgv_weights = pd.read_sql("SELECT tgv_name, tgv_weight FROM talent_group_weights", conn)
     
     return {
         'total_employees': total_employees,
@@ -211,7 +220,8 @@ def load_dashboard_data():
         'top_comp': top_comp,
         'comp_gap': comp_gap,
         'cog_gap': cog_gap,
-        'position_count': position_count
+        'position_count': position_count,
+        'tgv_weights': tgv_weights
     }
 
 # ============================================================================
@@ -347,10 +357,12 @@ try:
         """, unsafe_allow_html=True)
         
         # Donut chart - compact and centered
-        tgv_data = pd.DataFrame({
-            'TGV': ['Competency', 'Cognitive', 'Work Style', 'Personality', 'Strengths'],
-            'Weight': [35, 30, 20, 10, 5]
-        })
+        tgv_data = data['tgv_weights'].copy()
+        # Convert decimal to percentage for display if needed, but pie chart handles values automatically.
+        # Ensure column names match what we want to display
+        tgv_data.rename(columns={'tgv_name': 'TGV', 'tgv_weight': 'Weight'}, inplace=True)
+        # Multiply by 100 for better tooltip display if they are decimals 0.5 etc
+        tgv_data['Weight'] = tgv_data['Weight'] * 100
         
         fig_tgv = go.Figure(data=[go.Pie(
             labels=tgv_data['TGV'],
