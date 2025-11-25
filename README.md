@@ -76,34 +76,61 @@ streamlit run app.py
 
 ```
 talent-intelligence-dashboard/
-├── app.py                    # Main dashboard
+├── app.py                      # Main dashboard with key metrics
 ├── pages/
-│   ├── 1_Talent_Matching.py  # Talent matching engine
-│   ├── 2_Job_Generator.py    # AI job generator
-│   └── 3_Employee_Profile.py # Employee analytics
+│   ├── 1_Talent_Matching.py    # Talent matching engine (3 modes)
+│   ├── 2_Job_Generator.py      # AI job generator with Gemini
+│   └── 3_Employee_Profile.py   # Employee analytics viewer
 ├── core/
-│   ├── db.py                 # Database connection
-│   ├── matching.py           # Matching algorithms
-│   ├── job_generator.py      # Job generation logic
-│   └── utils.py              # Utility functions
-├── components/               # Reusable UI components
-└── docs/                     # Documentation
+│   ├── db.py                   # Database connection handler
+│   ├── matching.py             # SQL-based matching engine (18-stage CTE)
+│   ├── matching_breakdown.py   # Detailed match breakdown analysis
+│   ├── job_generator.py        # Job vacancy save/load functions
+│   └── analysis_ui.py          # Analysis UI components
+├── scripts/
+│   ├── db_tools.py             # Manual DB connection utility
+│   └── test_dashboard.py       # Comprehensive test suite
+└── docs/                       # Documentation & reports
 
 ```
 
+## Matching Algorithm
+
+The dashboard uses a **weighted scoring system** with the following Talent Group Variable (TGV) weights:
+
+| TGV | Weight | Description |
+|-----|--------|-------------|
+| **Competency** | 50% | 10 core competencies from assessment |
+| **Work Style** | 25% | 20 PAPI Kostick scales |
+| **Cognitive** | 10% | 5 psychometric test scores (IQ, GTQ, TIKI, Pauli, Faxtor) |
+| **Strengths** | 10% | Top 5 CliftonStrengths themes |
+| **Personality** | 5% | MBTI & DISC profiles |
+
+**Matching Logic:**
+- Uses **latest year data only** for temporal consistency
+- Benchmark = High Performers (rating 5) in current year
+- Data completeness indicator (out of 37 total variables)
+- 18-stage CTE pipeline for efficient SQL execution
+
 ## Database Schema
 
-Required tables:
-- `employees` - Employee master data
-- `competencies` - Competency definitions
-- `employee_competencies` - Employee competency scores
-- `positions` - Position master data
-- `role_competency_mapping` - Required competencies per role
-- `performance_history` - Historical performance data
-- `papi_profiles` - PAPI assessment results
-- `job_vacancies` - Generated job postings
+**Core Tables:**
+- `employees` - Employee master data with demographics
+- `dim_positions`, `dim_departments`, `dim_divisions`, `dim_grades`, `dim_directorates` - Organizational dimensions
+- `dim_competency_pillars` - Competency definitions (10 pillars)
+- `talent_group_weights` - TGV weights configuration
 
-See `docs/SQL-scheme.md` for detailed schema.
+**Assessment Data:**
+- `competencies_yearly` - Annual competency scores
+- `performance_yearly` - Annual performance ratings
+- `profiles_psych` - Psychometric test results (IQ, GTQ, TIKI, Pauli, Faxtor, MBTI, DISC)
+- `papi_scores` - PAPI Kostick work style profiles (20 scales)
+- `strengths` - CliftonStrengths themes
+
+**Application Data:**
+- `vacancies` - AI-generated job postings
+
+See `docs/SQL_ENGINE_TEMPLATE.sql` for detailed matching query.
 
 ## Usage
 
@@ -124,3 +151,33 @@ See `docs/SQL-scheme.md` for detailed schema.
 1. Select employee from dropdown
 2. View comprehensive analytics across multiple tabs
 3. Explore competency breakdowns and recommendations
+
+## Testing
+
+Run the comprehensive test suite:
+```bash
+python scripts/test_dashboard.py
+```
+
+This validates:
+- Database connectivity
+- HP count accuracy (latest year filtering)
+- TGV weights consistency
+- Data completeness calculation
+- Query performance
+
+## Key Features
+
+✅ **Smart Benchmarking** - 3 matching modes (Manual, Filter, Default)  
+✅ **Temporal Consistency** - Uses latest year data only  
+✅ **Data Quality Transparency** - Shows data completeness per candidate  
+✅ **AI-Powered Job Generation** - Google Gemini integration  
+✅ **Comprehensive Analytics** - 37 talent variables across 5 TGV groups  
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Contributing
+
+Contributions welcome! Please open an issue or submit a PR.
