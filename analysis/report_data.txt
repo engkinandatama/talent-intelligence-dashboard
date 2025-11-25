@@ -1,0 +1,59 @@
+
+--- GENERAL STATS ---
+Total Employees (Year 2025): 2010
+High Performers: 168 (8.4%)
+
+--- COMPETENCY GAPS ---
+is_hp                             Gap
+pillar_label                         
+Social Empathy & Awareness   2.215779
+Synergy & Team Orientation   1.997189
+Value Creation for Users     1.950520
+Commercial Savvy & Impact    1.830270
+Quality Delivery Discipline  1.549597
+
+--- COGNITIVE CORRELATION ---
+iq: 0.01
+gtq: 0.00
+tiki: 0.01
+pauli: 0.05
+faxtor: 0.00
+
+--- PAPI DIFFERENTIATORS ---
+is_hp          False      True       Gap    AbsGap
+scale_code                                        
+Papi_C      4.539088  4.190476 -0.348612  0.348612
+Papi_E      4.676982  4.988095  0.311114  0.311114
+Papi_P      4.655266  4.934524  0.279258  0.279258
+Papi_T      4.581976  4.309524 -0.272452  0.272452
+Papi_S      4.611835  4.345238 -0.266597  0.266597
+
+--- MBTI DISTRIBUTION (HP) ---
+mbti
+ENFP    9.740260
+ISFP    9.740260
+ENTP    8.441558
+
+--- DISC DISTRIBUTION (HP) ---
+disc
+SI    10.828025
+CD     9.554140
+DC     9.554140
+
+--- TOP STRENGTHS (HP) ---
+Strengths Table Columns: ['employee_id', 'rank', 'theme']
+Futuristic: 78 (46.4%)
+Intellection: 77 (45.8%)
+Context: 70 (41.7%)
+Self-Assurance: 69 (41.1%)
+Analytical: 67 (39.9%)
+
+--- EXPERIENCE STATS ---
+Median Experience HP: 4.3 years
+Median Experience Non-HP: 4.1 years
+
+--- GRADE DISTRIBUTION (HP) ---
+name
+IV     38.095238
+V      31.547619
+III    30.357143
