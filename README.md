@@ -17,7 +17,7 @@ This project follows a rigorous 3-step data science methodology to transform raw
     - Analyzed 10 competency pillars, 20 PAPI scales, and 5 cognitive tests.
     - Discovered that **Soft Skills (Competencies)** and **Work Style** are the strongest predictors of success.
     - **Output:** A validated "Success Formula" with weighted scoring (50/25/10/10/5).
-- **See:** `docs/report/step1_report.pdf`
+- **See:** [Step 1 Report (PDF)](docs/report/step1_report.pdf)
 
 ### Step 2: SQL Matching Engine (Engineering)
 - **Objective:** Operationalize the Success Formula into a scalable backend.
@@ -26,7 +26,7 @@ This project follows a rigorous 3-step data science methodology to transform raw
     - Implemented normalization, weighted scoring, and gap analysis logic directly in the database.
     - Ensured sub-second query performance for 10,000+ records.
     - **Output:** A robust SQL engine capable of "Mode A" (Cloning) and "Mode B" (Role-based) matching.
-- **See:** `docs/report/step2_report.pdf` & `docs/SQL_ENGINE_TEMPLATE.sql`
+- **See:** [Step 2 Report (PDF)](docs/report/step2_report.pdf) & [SQL Engine Template](docs/SQL_ENGINE_TEMPLATE.sql)
 
 ### Step 3: AI-Powered Dashboard (Product)
 - **Objective:** Deliver insights to end-users via an intuitive interface.
@@ -35,7 +35,7 @@ This project follows a rigorous 3-step data science methodology to transform raw
     - Integrated **Google Gemini AI** to generate job profiles that bridge the gap between recruitment and internal matching.
     - Created interactive visualizations for gap analysis (Radar charts, Bar charts).
     - **Output:** The final deployed application.
-- **See:** `docs/report/step3_report.pdf`
+- **See:** [Step 3 Report (PDF)](docs/report/step3_report.pdf)
 
 ## Features
 
@@ -65,6 +65,8 @@ Comprehensive employee analytics:
 - PAPI work style analysis (20 scales)
 - Career journey visualization
 - Personalized development recommendations
+
+![Employee Profile Preview](img/dashboard/Employee-Profile-·-preview.png)
 
 ## Tech Stack
 
