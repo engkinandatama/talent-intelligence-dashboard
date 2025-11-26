@@ -56,7 +56,30 @@ COLORS_HP = {
 }
 
 # Database
-DB_URL = "postgresql://postgres.dolyfrxntkerdxgfvgqe:talent-match-intelligence@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
+# Database
+import toml
+import os
+
+def get_db_url():
+    # Try to load from local secrets file
+    secrets_path = ".streamlit/secrets.toml"
+    if os.path.exists(secrets_path):
+        with open(secrets_path, "r") as f:
+            secrets = toml.load(f)
+            # Handle both flat structure and [database] section
+            if "database" in secrets:
+                db = secrets["database"]
+                return f"postgresql://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['database']}"
+            elif "DB_USER" in secrets:
+                return f"postgresql://{secrets['DB_USER']}:{secrets['DB_PASS']}@{secrets['DB_HOST']}:{secrets['DB_PORT']}/{secrets['DB_NAME']}"
+    
+    # Fallback to environment variables (for CI/CD)
+    if "DB_USER" in os.environ:
+        return f"postgresql://{os.environ['DB_USER']}:{os.environ['DB_PASS']}@{os.environ['DB_HOST']}:{os.environ['DB_PORT']}/{os.environ['DB_NAME']}"
+    
+    raise ValueError("Database credentials not found in secrets.toml or environment variables")
+
+DB_URL = get_db_url()
 
 print("""
 ╔═══════════════════════════════════════════════════════════════════════════════╗
