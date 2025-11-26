@@ -4,6 +4,39 @@ A modern HR analytics dashboard built with Streamlit for talent matching, job pr
 
 ![Talent Intelligence Dashboard](img/dashboard/app-dashboard.png)
 
+🔗 **Live Demo:** [https://talent-intelligence-dashboard.streamlit.app/](https://talent-intelligence-dashboard.streamlit.app/)
+
+## Case Study Methodology
+
+This project follows a rigorous 3-step data science methodology to transform raw HR data into actionable insights:
+
+### Step 1: Success Pattern Discovery (Analysis)
+- **Objective:** Identify the empirical "DNA" of high performers.
+- **Process:**
+    - Conducted Exploratory Data Analysis (EDA) on 2,010 employees.
+    - Analyzed 10 competency pillars, 20 PAPI scales, and 5 cognitive tests.
+    - Discovered that **Soft Skills (Competencies)** and **Work Style** are the strongest predictors of success.
+    - **Output:** A validated "Success Formula" with weighted scoring (50/25/10/10/5).
+- **See:** `docs/report/step1_report.pdf`
+
+### Step 2: SQL Matching Engine (Engineering)
+- **Objective:** Operationalize the Success Formula into a scalable backend.
+- **Process:**
+    - Designed an **18-stage CTE (Common Table Expression)** pipeline in PostgreSQL.
+    - Implemented normalization, weighted scoring, and gap analysis logic directly in the database.
+    - Ensured sub-second query performance for 10,000+ records.
+    - **Output:** A robust SQL engine capable of "Mode A" (Cloning) and "Mode B" (Role-based) matching.
+- **See:** `docs/report/step2_report.pdf` & `docs/SQL_ENGINE_TEMPLATE.sql`
+
+### Step 3: AI-Powered Dashboard (Product)
+- **Objective:** Deliver insights to end-users via an intuitive interface.
+- **Process:**
+    - Built a **Streamlit** application to visualize the SQL engine's outputs.
+    - Integrated **Google Gemini AI** to generate job profiles that bridge the gap between recruitment and internal matching.
+    - Created interactive visualizations for gap analysis (Radar charts, Bar charts).
+    - **Output:** The final deployed application.
+- **See:** `docs/report/step3_report.pdf`
+
 ## Features
 
 ### 1. Talent Matching Engine
@@ -93,12 +126,18 @@ talent-intelligence-dashboard/
 │   ├── matching_breakdown.py   # Detailed match breakdown analysis
 │   ├── job_generator.py        # Job vacancy save/load functions
 │   └── analysis_ui.py          # Analysis UI components
+├── analysis/                   # Step 1 Analysis Scripts
+│   ├── step1_full_analysis.py  # Main visual generator script
+│   ├── extract_report_data.py  # Data extraction utility
+│   └── report_data.txt         # Generated statistical data
 ├── scripts/
 │   ├── db_tools.py             # Manual DB connection utility
 │   └── test_dashboard.py       # Comprehensive test suite
 ├── docs/
 │   ├── report/                 # Final PDF Reports (Step 1, 2, 3)
-│   └── .md/                    # Markdown report sources
+│   ├── .md/                    # Markdown report sources
+│   ├── SQL_ENGINE_TEMPLATE.sql # Core SQL Logic
+│   └── MATCHING_ALGORITHM.md   # Algorithm documentation
 └── img/                        # Project images & assets
 ```
 
