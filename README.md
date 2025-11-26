@@ -137,7 +137,6 @@ talent-intelligence-dashboard/
 │   └── test_dashboard.py       # Comprehensive test suite
 ├── docs/
 │   ├── report/                 # Final PDF Reports (Step 1, 2, 3)
-│   ├── .md/                    # Markdown report sources
 │   ├── SQL_ENGINE_TEMPLATE.sql # Core SQL Logic
 │   └── MATCHING_ALGORITHM.md   # Algorithm documentation
 └── img/                        # Project images & assets
